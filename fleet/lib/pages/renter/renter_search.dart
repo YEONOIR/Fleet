@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class RenterHomePage extends StatelessWidget {
-  const RenterHomePage({super.key});
+class RenterSearchPage extends StatelessWidget {
+  const RenterSearchPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: Text(
-          'Home',
+          'Search',
           style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: 24,
