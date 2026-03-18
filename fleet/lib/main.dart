@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pages/login.dart';
+import 'pages/signup.dart';
+import 'pages/renter/renter_main.dart';
 
 void main() {
   runApp(const MainApp());
@@ -12,12 +14,14 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fleet',
+      debugShowCheckedModeBanner: false,
       initialRoute: '/',
-      //Task02: define routing
       routes: {
-        '/': (context) => LoginPage(),
-
+        '/': (context) => const LoginPage(),
+        '/signup': (context) => const SignUpPage(),
+        '/renter': (context) => const RenterMainPage(),
       },
     );
   }
 }
+
