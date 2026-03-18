@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class RenterProfilePage extends StatelessWidget {
-  const RenterProfilePage({super.key});
+class OwnerProfilePage extends StatelessWidget {
+  const OwnerProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -110,33 +110,30 @@ class RenterProfilePage extends StatelessWidget {
                   _buildProfileMenu(
                     icon: Icons.swap_horiz_rounded,
                     title: 'Switch mode',
-                    subtitle: 'Change to Owner Profile',
+                    subtitle: 'Change to Renter Profile',
                     trailing: GestureDetector(
                       onTap: () {
                         Navigator.pushReplacementNamed(
                           context, 
-                          '/owner',
+                          '/renter',
                           arguments: {'initialIndex': 4},
                         );
                       },
                       child: Container(
                         width: 46,
-                        height: 24, 
-                        padding: const EdgeInsets.all(3),
+                        height: 24,
+                        padding: const EdgeInsets.all(2), 
                         decoration: BoxDecoration(
-                          color: const Color.fromRGBO(230, 226, 233, 1.0), 
+                          color: const Color.fromRGBO(172, 114, 161, 1.0), 
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color.fromRGBO(136, 128, 142, 1.0), 
-                            width: 1.5,
-                          ),
                         ),
-                        alignment: Alignment.centerLeft, 
+                  
+                        alignment: Alignment.centerRight, 
                         child: Container(
                           width: 16,
                           height: 16,
                           decoration: const BoxDecoration(
-                            color: Color.fromRGBO(136, 128, 142, 1.0),
+                            color: Colors.white, 
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -145,7 +142,7 @@ class RenterProfilePage extends StatelessWidget {
                     onTap: () {
                       Navigator.pushReplacementNamed(
                         context, 
-                        '/owner',
+                        '/renter',
                         arguments: {'initialIndex': 4},
                       );
                     },

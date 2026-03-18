@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 
-class CustomNavBar extends StatefulWidget {
+class OwnerNavBar extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const CustomNavBar({
+  const OwnerNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
   });
 
   @override
-  State<CustomNavBar> createState() => _CustomNavBarState();
+  State<OwnerNavBar> createState() => _OwnerNavBarState();
 }
 
-class _CustomNavBarState extends State<CustomNavBar>
+class _OwnerNavBarState extends State<OwnerNavBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
   late int _previousIndex;
 
-  // Icon data for each tab
   static const List<IconData> _outlinedIcons = [
     Icons.home_outlined,
     Icons.description_outlined,
-    Icons.explore_outlined,
+    Icons.calendar_today_outlined,
     Icons.notifications_outlined,
     Icons.person_outline,
   ];
@@ -32,7 +31,7 @@ class _CustomNavBarState extends State<CustomNavBar>
   static const List<IconData> _filledIcons = [
     Icons.home,
     Icons.description,
-    Icons.explore,
+    Icons.calendar_month, 
     Icons.notifications,
     Icons.person,
   ];
@@ -55,7 +54,7 @@ class _CustomNavBarState extends State<CustomNavBar>
   }
 
   @override
-  void didUpdateWidget(covariant CustomNavBar oldWidget) {
+  void didUpdateWidget(covariant OwnerNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex != widget.currentIndex) {
       _previousIndex = oldWidget.currentIndex;
@@ -107,7 +106,6 @@ class _CustomNavBarState extends State<CustomNavBar>
                   }),
                 ),
               ),
-              // Floating active icon
               Positioned(
                 left: _getActiveIconX(
                     MediaQuery.of(context).size.width, _positionAnimation.value),
@@ -116,11 +114,11 @@ class _CustomNavBarState extends State<CustomNavBar>
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: const Color.fromRGBO(217, 217, 217, 1.0),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
+                        color: Colors.black.withOpacity(0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -163,7 +161,7 @@ class _CustomNavBarState extends State<CustomNavBar>
           opacity: isActive ? 0.0 : 1.0,
           child: Icon(
             _outlinedIcons[index],
-            color: Colors.white.withValues(alpha: 0.85),
+            color: Colors.white.withOpacity(0.85),
             size: 26,
           ),
         ),
@@ -204,14 +202,11 @@ class _NavBarPainter extends CustomPainter {
 
     final path = Path();
 
-    // Start from top-left
     path.moveTo(0, barTop);
 
-    // Draw line to the start of the notch curve
     final notchStartX = notchCenterX - notchRadius - curveWidth;
     path.lineTo(notchStartX.clamp(0, size.width), barTop);
 
-    // Left side of the notch curve (going up)
     path.cubicTo(
       notchCenterX - notchRadius - (curveWidth * 0.3),
       barTop,
@@ -221,7 +216,7 @@ class _NavBarPainter extends CustomPainter {
       barTop - notchDepth,
     );
 
-    // Top of the notch (the arc)
+
     path.cubicTo(
       notchCenterX - notchRadius * 0.35,
       barTop - notchDepth - 8,
@@ -231,7 +226,6 @@ class _NavBarPainter extends CustomPainter {
       barTop - notchDepth,
     );
 
-    // Right side of the notch curve (going down)
     path.cubicTo(
       notchCenterX + notchRadius,
       barTop - notchDepth * 0.4,
@@ -241,13 +235,8 @@ class _NavBarPainter extends CustomPainter {
       barTop,
     );
 
-    // Continue to top-right
     path.lineTo(size.width, barTop);
-
-    // Bottom-right
     path.lineTo(size.width, size.height);
-
-    // Bottom-left
     path.lineTo(0, size.height);
 
     path.close();
