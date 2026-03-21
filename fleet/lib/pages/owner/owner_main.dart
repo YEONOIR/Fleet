@@ -3,7 +3,7 @@ import '../../components/owner_nav_bar.dart';
 import 'owner_profile.dart';
 import 'owner_home.dart';
 import 'owner_notification.dart';
-import 'owner_request.dart';
+import 'owner_vehicle.dart';
 import 'owner_schedule.dart';
 
 class OwnerMainPage extends StatefulWidget {
@@ -32,7 +32,7 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
   // หน้าจอทั้ง 5 หน้าของ Owner
   final List<Widget> _pages = [
     OwnerHomePage(),
-    OwnerRequestPage(),
+    OwnerVehiclePage(),
     OwnerSchedulePage(),
     OwnerNotificationPage(),
     OwnerProfilePage(),

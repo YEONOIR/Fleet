@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  image_picker: ^1.2.1
   simple_gradient_text: 1.4.0
 
 dev_dependencies:
@@ -23,7 +24,11 @@ flutter:
   assets:
     - assets/icons/Logo.png
     - assets/icons/avatar.jpg
-  
+    # Dummy image -> before implement backend we will import these
+    - assets/images/bike.jpg
+    - assets/images/car.jpg
+    - assets/images/truck.jpg
+
   fonts:
     - family: Poppins
       fonts:
