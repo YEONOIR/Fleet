@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../components/renter_info_card.dart';
+import '../../utils/vehicle_utils.dart';
 
 class VehicleDetailPage extends StatelessWidget {
   final Map<String, dynamic> vehicle;
@@ -58,7 +59,7 @@ class VehicleDetailPage extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        // 2. Info & Status Section (Layout ข้อมูล + สถานะด้านขวา)
+                        // 2. Info & Status Section (ปรับปรุงส่วน Icon และ Fuel)
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -80,12 +81,25 @@ class VehicleDetailPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Icon(vehicle['typeIcon'], size: 45, color: const Color.fromRGBO(7, 14, 42, 1.0)),
+                                  // 💡 เลือก Icon ตามประเภทพลังงาน
+                                  Icon(
+                                    getFuelIcon(vehicle['V Fuel']), 
+                                    size: 45, 
+                                    color: const Color.fromRGBO(7, 14, 42, 1.0)
+                                  ),
                                   const SizedBox(height: 5),
-                                  // แสดงผลประเภทเชื้อเพลิง/พลังงาน
+                                  
+                                  // 💡 แสดง 'ENERGY' สำหรับรถไฟฟ้า หรือชื่อน้ำมันสำหรับรถอื่น
                                   Text(
-                                    vehicle['V Fuel'].toString().toUpperCase() == 'EV' ? 'ENERGY' : vehicle['V Fuel'].toString(),
-                                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                                    vehicle['V Fuel'].toString().toUpperCase() == 'EV' 
+                                        ? 'ENERGY' 
+                                        : vehicle['V Fuel'].toString(),
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins', 
+                                      fontSize: 12, 
+                                      fontWeight: FontWeight.bold, 
+                                      color: Colors.blueGrey
+                                    ),
                                   ),
                                   const SizedBox(height: 15),
                                   _buildStatusBadge(vehicle['V Status'], vehicle['statusColor']),
@@ -300,4 +314,6 @@ class VehicleDetailPage extends StatelessWidget {
       ),
     );
   }
+
+ 
 }

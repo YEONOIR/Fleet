@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/vehicle_utils.dart'; // 👈 อย่าลืม import ไฟล์ utility ที่เราสร้างไว้นะครับ
 
 class VehicleMiniCard extends StatelessWidget {
   final String vName;
@@ -8,10 +9,9 @@ class VehicleMiniCard extends StatelessWidget {
   final String vBrand;
   final String vModel;
   final String vType;
-  final String vFuel;
+  final String vFuel; // เราจะใช้ตัวนี้ไปหา Icon
   final String vAddress;
   final double vPrice;
-  final IconData typeIcon;
 
   const VehicleMiniCard({
     super.key,
@@ -25,7 +25,7 @@ class VehicleMiniCard extends StatelessWidget {
     required this.vFuel,
     required this.vAddress,
     required this.vPrice,
-    required this.typeIcon,
+    // 💡 เอา typeIcon ออกจาก constructor เพราะเราจะให้มันหาเองข้างใน
   });
 
   @override
@@ -38,6 +38,7 @@ class VehicleMiniCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // ส่วน Header ของการ์ด (ชื่อรถ + Rating)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
             decoration: const BoxDecoration(
@@ -73,12 +74,13 @@ class VehicleMiniCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Plate: $vPlate', style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
-                          Icon(typeIcon, size: 18, color: Colors.black87),
+                          // 💡 ตรงนี้แหละครับ! เรียกใช้ฟังก์ชันจาก Utility แทนการรับค่ามา
+                          Icon(getFuelIcon(vFuel), size: 18, color: Colors.black87),
                         ],
                       ),
                       Text('$vBrand $vModel', style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
                       Text('Type: $vType', style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
-                      Text(vAddress, style: const TextStyle(fontFamily: 'Poppins', fontSize: 9, color: Colors.black54)),
+                      Text(vAddress, style: const TextStyle(fontFamily: 'Poppins', fontSize: 9, color: Colors.black54), maxLines: 2, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 8),
                       Align(
                         alignment: Alignment.centerRight,
