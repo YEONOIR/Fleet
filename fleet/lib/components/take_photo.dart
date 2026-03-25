@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../pages/owner/check_hand_in.dart'; // เตรียมส่งไปหน้าตรวจสภาพ
+import '../pages/owner/add_vehicle.dart'; // 💡 นำเข้าหน้า Add Vehicle
 
 class TakePhotoPage extends StatefulWidget {
   final String vehicleName;
@@ -28,36 +29,48 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // กดปุ่ม Next เพื่อไปหน้า Inspection
-  void _goToInspection() {
-    // ดักจับว่าถ่ายรูปครบ 4 รูปหรือยัง
+  // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไข)
+  // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไข)
+  void _goToNextPage() {
     if (afterImages.contains(null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please take all 4 pictures of the vehicle.', style: TextStyle(fontFamily: 'Poppins')),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('Please take all 4 pictures of the vehicle.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.orange),
       );
       return;
     }
 
-    // แปลง List<File?> เป็น List<File> เพราะเราชัวร์แล้วว่ามันไม่ null
     List<File> completedImages = afterImages.whereType<File>().toList();
+    List<String> allImagePaths = completedImages.map((file) => file.path).toList();
 
-    // ส่งรูปที่ถ่ายเสร็จแล้ว ไปยังหน้า CheckHandInPage
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CheckHandInPage(
-          vehicleName: widget.vehicleName,
-          afterImages: completedImages, // 💡 ส่งรูปไปที่นี่!
+    // 💡 1. โหมดแก้ไขรูปภาพ (ส่งรูปกลับไปหน้าเดิม)
+    if (widget.vehicleName == 'Edit Photos') {
+      Navigator.pop(context, allImagePaths); 
+    } 
+    // 💡 2. โหมดเพิ่มรถใหม่ (เปิดหน้า Add Vehicle)
+    else if (widget.vehicleName == 'New Vehicle') {
+      Navigator.pushReplacement( // ใช้ pushReplacement ดีแล้วครับ จะได้ไม่ค้างหน้ากล้องเก่า
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths),
         ),
-      ),
-    );
+      );
+    } 
+    // 💡 3. โหมดคืนรถ (ไปหน้า Check Hand In)
+    else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckHandInPage(vehicleName: widget.vehicleName, afterImages: completedImages),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // เช็คว่าเป็นโหมดเพิ่มรถใหม่หรือไม่ เพื่อปรับเปลี่ยนข้อความให้เหมาะสม
+    bool isNewVehicle = widget.vehicleName == 'New Vehicle';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -68,7 +81,10 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
             ),
           ),
         ),
-        title: const Text('Take Photos', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(
+          isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos', // 💡 ปรับชื่อหัวตามโหมด
+          style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)
+        ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -80,9 +96,18 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(widget.vehicleName, style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    isNewVehicle ? 'Upload Vehicle Angles' : widget.vehicleName, 
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold)
+                  ),
                   const SizedBox(height: 10),
-                  const Text('Please take 4 photos to verify the current condition of the vehicle.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
+                  Text(
+                    isNewVehicle 
+                      ? 'Please take 4 photos of the vehicle to be used for the listing.'
+                      : 'Please take 4 photos to verify the current condition of the vehicle.', 
+                    textAlign: TextAlign.center, 
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)
+                  ),
                   const SizedBox(height: 30),
 
                   // สร้าง Grid 2x2 สำหรับถ่ายรูป 4 มุม
@@ -103,7 +128,6 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(15),
-                            // 💡 แก้ตรงนี้: เปลี่ยนเป็นเส้นทึบ (solid) แทน
                             border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid), 
                           ),
                           child: afterImages[index] != null
@@ -136,11 +160,14 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0), // ใช้สีม่วงเข้มสำหรับหน้าถ่ายรูป
+                  backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: _goToInspection,
-                child: const Text('Next to Inspection', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                onPressed: _goToNextPage, // 💡 เปลี่ยนมาเรียกฟังก์ชันที่เราแก้เงื่อนไขไว้
+                child: Text(
+                  isNewVehicle ? 'Next to Add Details' : 'Next to Inspection', // 💡 ปรับคำบนปุ่ม
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+                ),
               ),
             ),
           ),

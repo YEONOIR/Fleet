@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../components/vehicle_card.dart';
 import 'vehicle_detail.dart';
-import 'add_vehicle.dart';
+import '../../components/take_photo.dart';
 
 class OwnerVehiclePage extends StatefulWidget {
   const OwnerVehiclePage({super.key});
@@ -144,10 +144,12 @@ class _OwnerVehiclePageState extends State<OwnerVehiclePage> {
         actions: [
           IconButton(
             onPressed: () {
-              // 💡 นำทางไปหน้า AddVehiclePage
+              // 💡 เปลี่ยนให้พาไปหน้า TakePhotoPage แทน
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddVehiclePage()),
+                MaterialPageRoute(
+                  builder: (context) => const TakePhotoPage(vehicleName: 'New Vehicle'),
+                ),
               );
             },
             icon: const Icon(Icons.add, color: Colors.white, size: 28),
