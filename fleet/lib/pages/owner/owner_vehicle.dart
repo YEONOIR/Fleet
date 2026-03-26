@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../components/vehicle_card.dart';
 import 'vehicle_detail.dart';
-import '../../components/take_photo.dart';
+import '../take_photo.dart';
 
 class OwnerVehiclePage extends StatefulWidget {
   const OwnerVehiclePage({super.key});

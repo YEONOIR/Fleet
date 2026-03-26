@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../pages/owner/check_hand_in.dart'; // เตรียมส่งไปหน้าตรวจสภาพ
-import '../pages/owner/add_vehicle.dart'; // 💡 นำเข้าหน้า Add Vehicle
+import 'owner/check_hand_in.dart'; // เตรียมส่งไปหน้าตรวจสภาพ
+import 'owner/add_vehicle.dart'; // 💡 นำเข้าหน้า Add Vehicle
 
 class TakePhotoPage extends StatefulWidget {
   final String vehicleName;

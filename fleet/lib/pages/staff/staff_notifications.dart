@@ -1,49 +1,42 @@
 import 'package:flutter/material.dart';
 import '../../components/notification_card.dart'; // 💡 เช็ค Path ให้ตรงกับโฟลเดอร์ component ของคุณ
 
-class RenterNotificationsPage extends StatefulWidget {
-  const RenterNotificationsPage({super.key});
+class StaffNotificationsPage extends StatefulWidget {
+  const StaffNotificationsPage({super.key});
 
   @override
-  State<RenterNotificationsPage> createState() => _RenterNotificationsPageState();
+  State<StaffNotificationsPage> createState() => _StaffNotificationsPageState();
 }
 
-class _RenterNotificationsPageState extends State<RenterNotificationsPage> {
-  // 💡 ข้อมูลการแจ้งเตือนเฉพาะฝั่ง Renter
-  List<Map<String, dynamic>> renterNotifications = [
+class _StaffNotificationsPageState extends State<StaffNotificationsPage> {
+  // 💡 ข้อมูลการแจ้งเตือนเฉพาะฝั่ง Staff
+  List<Map<String, dynamic>> staffNotifications = [
     {
-      'type': 'Top up Success', 
-      'title': 'Top Up Successful', 
-      'message': '฿ 2,000 has been successfully added to your wallet.', 
-      'time': '10 mins ago', 
+      'type': 'New Vehicle Request', 
+      'title': 'New Vehicle Approval', 
+      'message': 'Sukrit requested to add a new Honda Civic e:HEV to the system. Please review.', 
+      'time': '30 mins ago', 
       'isRead': false
     },
     {
-      'type': 'Rent Accepted', 
-      'title': 'Booking Confirmed!', 
-      'message': 'Pimthida has accepted your rent request for Honda Civic.', 
+      'type': 'New Vehicle Request', 
+      'title': 'New Vehicle Approval', 
+      'message': 'Pimthida requested to add a Yamaha Grand Filano. Please review.', 
       'time': '2 hours ago', 
       'isRead': false
     },
     {
-      'type': 'Upcoming Pick-up', 
-      'title': 'Upcoming Pick-up Reminder', 
-      'message': 'Don\'t forget to pick up the car tomorrow at 10:00 AM.', 
-      'time': 'Yesterday', 
-      'isRead': true
-    },
-    {
-      'type': 'Upcoming Return', 
-      'title': 'Time to Return', 
-      'message': 'Your rental ends in 2 hours. Please prepare to return the car.', 
-      'time': 'Yesterday', 
+      'type': 'Delete Vehicle Request', 
+      'title': 'Vehicle Deletion Request', 
+      'message': 'Mario Maurer requested to delete Toyota Camry from the system.', 
+      'time': '4 hours ago', 
       'isRead': true
     },
   ];
 
   void _markAllAsRead() {
     setState(() {
-      for (var notification in renterNotifications) {
+      for (var notification in staffNotifications) {
         notification['isRead'] = true;
       }
     });
@@ -74,22 +67,22 @@ class _RenterNotificationsPageState extends State<RenterNotificationsPage> {
           const SizedBox(width: 10),
         ],
       ),
-      body: renterNotifications.isEmpty
+      body: staffNotifications.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
                   const SizedBox(height: 15),
-                  Text('No notifications', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.grey.shade500)),
+                  Text('No pending requests', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.grey.shade500)),
                 ],
               ),
             )
           : ListView.builder(
               padding: const EdgeInsets.all(20),
-              itemCount: renterNotifications.length,
+              itemCount: staffNotifications.length,
               itemBuilder: (context, index) {
-                return NotificationCard(notification: renterNotifications[index]);
+                return NotificationCard(notification: staffNotifications[index]);
               },
             ),
     );

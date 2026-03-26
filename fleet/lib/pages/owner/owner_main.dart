@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../components/owner_nav_bar.dart'; 
 import 'owner_profile.dart';
 import 'owner_home.dart';
-import 'owner_notification.dart';
+import 'owner_notifications.dart';
 import 'owner_vehicle.dart';
 import 'owner_schedule.dart';
 

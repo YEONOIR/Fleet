@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'vehicle_mini_card.dart'; // ดึง Mini Card มาใช้
-import 'take_photo.dart'; // ดึงหน้ากล้องมาใช้
+import '../pages/take_photo.dart'; // ดึงหน้ากล้องมาใช้
+import '../pages/owner/schedule_detail.dart';
 
 class RequestCard extends StatelessWidget {
   final Map<String, dynamic> request;
@@ -102,14 +103,38 @@ class RequestCard extends StatelessWidget {
                 
                 // ปุ่ม Action
                 isRent
-                    ? Row(
-                        children: [
-                          Expanded(child: _buildActionButton(Icons.close, const Color(0xFFF07B75), () => _showRejectReasonModal(context))),
-                          const SizedBox(width: 15),
-                          Expanded(child: _buildActionButton(Icons.check, const Color(0xFF75DB73), () => _showAcceptModal(context))),
-                        ],
+                    ? GestureDetector( // 💡 กรณี Rent: ปุ่มเหลือง ไปหน้า Detail
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ScheduleDetailPage(booking: {
+                                'renterName': '${request['Acc FName']} ${request['Acc LName']}',
+                                'tel': request['Acc Phone'],
+                                'rating': request['Acc Rate'].toString(),
+                                'startDate': startDateParts[0],
+                                'endDate': endDateParts[0],
+                                'startTime': startDateParts.length > 1 ? startDateParts[1] : '',
+                                'endTime': endDateParts.length > 1 ? endDateParts[1] : '',
+                                'status': request['Rent Status'],
+                                'remark': request['remark'] ?? '-',
+                              }),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8D354), // สีเหลือง
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Center(
+                            child: Text('Manage Request', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
+                        ),
                       )
-                    : GestureDetector(
+                    : GestureDetector( // 💡 กรณี Hand in: ปุ่มม่วง ไปหน้ากล้อง
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => TakePhotoPage(vehicleName: request['vehicleData']['V Name'])));
                         },
@@ -140,109 +165,12 @@ class RequestCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildActionButton(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: Colors.black87, size: 28),
-      ),
-    );
-  }
-
   Widget _buildAcceptButton() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 15),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(color: const Color(0xFF6B66CA), borderRadius: BorderRadius.circular(10)),
-      child: const Center(child: Text('Accept', style: TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))),
-    );
-  }
-
-  void _showRejectReasonModal(BuildContext context) {
-    TextEditingController reasonController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Cancel Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Please state the reason for declining this request:', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-            const SizedBox(height: 15),
-            TextField(
-              controller: reasonController,
-              maxLines: 3,
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'e.g., The car is currently unavailable...',
-                hintStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.grey),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Color.fromRGBO(172, 114, 161, 1.0)), borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF07B75), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              Navigator.pop(context);
-              _showConfirmRejectModal(context, reasonController.text);
-            },
-            child: const Text('Next', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showConfirmRejectModal(BuildContext context, String reason) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
-        content: Text('Are you sure you want to decline ${request['Acc FName']}\'s request?\n\nYour Reason:\n"$reason"', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rejection sent to the renter.', style: TextStyle(fontFamily: 'Poppins'))));
-            },
-            child: const Text('Send to Renter', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAcceptModal(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Accept Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
-        content: Text('Do you confirm to rent "${request['vehicleData']['V Name']}" to ${request['Acc FName']}?', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF75DB73), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rental accepted successfully!', style: TextStyle(fontFamily: 'Poppins'))));
-            },
-            child: const Text('Confirm Rent', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      child: const Center(child: Text('Accept Hand in', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white))),
     );
   }
 }

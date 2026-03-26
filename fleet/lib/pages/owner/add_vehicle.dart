@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../components/take_photo.dart'; // 💡 อย่าลืม import หน้ากล้องกลับมาด้วย
+import '../take_photo.dart'; // 💡 อย่าลืม import หน้ากล้องกลับมาด้วย
 
 class AddVehiclePage extends StatefulWidget {
   final List<String>? vehicleImagePaths;

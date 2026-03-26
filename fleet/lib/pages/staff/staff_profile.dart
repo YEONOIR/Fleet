@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class OwnerNotificationPage extends StatelessWidget {
-  const OwnerNotificationPage({super.key});
+class StaffProfilePage extends StatelessWidget {
+  const StaffProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: Text(
-          'Notification',
+          'Profile',
           style: TextStyle(
             fontFamily: 'Poppins',
             fontSize: 24,
