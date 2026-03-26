@@ -29,7 +29,13 @@ class VehicleDetailPage extends StatelessWidget {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.delete_outline, color: Colors.white)),
+          IconButton(
+            onPressed: () {
+              // 💡 เรียกใช้ฟังก์ชันโชว์ Modal ยืนยันการลบ (เดี๋ยวเราจะสร้างในจุดที่ 2)
+              _showDeleteConfirmation(context);
+            },
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
+          ),
         ],
       ),
       body: Column(
@@ -314,6 +320,61 @@ class VehicleDetailPage extends StatelessWidget {
       ),
     );
   }
+  // ==========================================
+  // 💡 Modal ยืนยันการลบรถ (Delete Confirmation)
+  // ==========================================
+  void _showDeleteConfirmation(BuildContext context) {
+    // สมมติว่าในหน้านี้คุณรับตัวแปร vehicle มา (เช่น widget.vehicle['V Name'])
+    // ถ้าตัวแปรชื่ออื่น ให้เปลี่ยนให้ตรงกับโค้ดของคุณนะครับ
+    String vehicleName = vehicle['V Name'] ?? 'this vehicle'; 
 
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+            const SizedBox(width: 10),
+            const Text('Delete Vehicle', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "$vehicleName"?\nThis action cannot be undone.', 
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // ปิด Modal เฉยๆ
+            child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent, 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            onPressed: () {
+              // TODO: ใส่ Logic ลบข้อมูลออกจาก Database จริงๆ ตรงนี้
+
+              // 1. ปิด Modal ยืนยัน
+              Navigator.pop(context); 
+              
+              // 2. ปิดหน้า Vehicle Detail (เด้งกลับไปหน้า Smart Garage)
+              Navigator.pop(context); 
+              
+              // 3. โชว์แจ้งเตือนว่าลบสำเร็จแล้ว (โชว์ที่หน้า Smart Garage)
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Vehicle "$vehicleName" has been deleted.', style: const TextStyle(fontFamily: 'Poppins')),
+                  backgroundColor: Colors.black87,
+                )
+              );
+            },
+            child: const Text('Delete', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
  
 }

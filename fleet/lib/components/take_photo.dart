@@ -19,9 +19,9 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
   List<File?> afterImages = [null, null, null, null];
   final List<String> photoLabels = ['Front', 'Back', 'Left', 'Right'];
 
-  // ฟังก์ชันเปิดกล้อง
-  Future<void> _takePhoto(int index) async {
-    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+  // 💡 1. ฟังก์ชันดึงรูป (รับพารามิเตอร์ว่าจะเอากล้องหรือแกลเลอรี่)
+  Future<void> _pickImage(int index, ImageSource source) async {
+    final XFile? photo = await _picker.pickImage(source: source);
     if (photo != null) {
       setState(() {
         afterImages[index] = File(photo.path);
@@ -29,7 +29,44 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไข)
+  // 💡 2. ฟังก์ชันเด้ง Bottom Sheet ให้เลือกว่าจะถ่ายหรือเลือกจาก Gallery
+  void _showPickerOptions(int index) {
+    bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
+    
+    // ถ้าเป็นการเพิ่มรถใหม่ ให้มีสิทธิ์เลือกจากแกลเลอรี่ได้
+    if (isNewVehicle) {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (context) => SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: Color.fromRGBO(7, 14, 42, 1.0)),
+                title: const Text('Take Photo', style: TextStyle(fontFamily: 'Poppins')),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(index, ImageSource.camera); // เปิดกล้อง
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color.fromRGBO(172, 114, 161, 1.0)),
+                title: const Text('Choose from Gallery', style: TextStyle(fontFamily: 'Poppins')),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(index, ImageSource.gallery); // เปิดอัลบั้ม
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // แต่ถ้าเป็นการรับรถคืน บังคับให้ใช้กล้องถ่ายสดๆ เท่านั้น
+      _pickImage(index, ImageSource.camera);
+    }
+  }
+
   // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไข)
   void _goToNextPage() {
     if (afterImages.contains(null)) {
@@ -42,20 +79,20 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     List<File> completedImages = afterImages.whereType<File>().toList();
     List<String> allImagePaths = completedImages.map((file) => file.path).toList();
 
-    // 💡 1. โหมดแก้ไขรูปภาพ (ส่งรูปกลับไปหน้าเดิม)
+    // 💡 โหมดแก้ไขรูปภาพ (ส่งรูปกลับไปหน้าเดิม)
     if (widget.vehicleName == 'Edit Photos') {
       Navigator.pop(context, allImagePaths); 
     } 
-    // 💡 2. โหมดเพิ่มรถใหม่ (เปิดหน้า Add Vehicle)
+    // 💡 โหมดเพิ่มรถใหม่ (เปิดหน้า Add Vehicle)
     else if (widget.vehicleName == 'New Vehicle') {
-      Navigator.pushReplacement( // ใช้ pushReplacement ดีแล้วครับ จะได้ไม่ค้างหน้ากล้องเก่า
+      Navigator.pushReplacement( 
         context,
         MaterialPageRoute(
           builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths),
         ),
       );
     } 
-    // 💡 3. โหมดคืนรถ (ไปหน้า Check Hand In)
+    // 💡 โหมดคืนรถ (ไปหน้า Check Hand In)
     else {
       Navigator.push(
         context,
@@ -68,8 +105,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
 
   @override
   Widget build(BuildContext context) {
-    // เช็คว่าเป็นโหมดเพิ่มรถใหม่หรือไม่ เพื่อปรับเปลี่ยนข้อความให้เหมาะสม
-    bool isNewVehicle = widget.vehicleName == 'New Vehicle';
+    bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -82,7 +118,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
           ),
         ),
         title: Text(
-          isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos', // 💡 ปรับชื่อหัวตามโหมด
+          isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos', 
           style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)
         ),
         centerTitle: true,
@@ -103,7 +139,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                   const SizedBox(height: 10),
                   Text(
                     isNewVehicle 
-                      ? 'Please take 4 photos of the vehicle to be used for the listing.'
+                      ? 'Please take or upload 4 photos of the vehicle for the listing.'
                       : 'Please take 4 photos to verify the current condition of the vehicle.', 
                     textAlign: TextAlign.center, 
                     style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)
@@ -118,12 +154,12 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 15,
                       mainAxisSpacing: 15,
-                      childAspectRatio: 0.85, // ปรับสัดส่วนกล่องให้สวย
+                      childAspectRatio: 0.85, 
                     ),
                     itemCount: 4,
                     itemBuilder: (context, index) {
                       return GestureDetector(
-                        onTap: () => _takePhoto(index),
+                        onTap: () => _showPickerOptions(index), // 💡 3. เรียกใช้ฟังก์ชันเลือกรูปตรงนี้
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
@@ -163,9 +199,9 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                   backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: _goToNextPage, // 💡 เปลี่ยนมาเรียกฟังก์ชันที่เราแก้เงื่อนไขไว้
+                onPressed: _goToNextPage, 
                 child: Text(
-                  isNewVehicle ? 'Next to Add Details' : 'Next to Inspection', // 💡 ปรับคำบนปุ่ม
+                  isNewVehicle ? 'Next to Add Details' : 'Next to Inspection', 
                   style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
                 ),
               ),
