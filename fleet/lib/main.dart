@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'pages/signup.dart';
 import 'pages/renter/renter_profile.dart';
 import 'pages/renter/renter_main.dart';
+import 'pages/renter/renter_topup.dart';
 import 'pages/owner/owner_main.dart';
 import 'pages/owner/owner_profile.dart';
 import 'pages/staff/staff_main.dart';
@@ -27,6 +28,7 @@ class MainApp extends StatelessWidget {
         // '/': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
         '/renter': (context) => const RenterMainPage(),
+        '/renter/topup': (context) => const RenterTopUpPage(),
         '/owner': (context) => const OwnerMainPage(), 
         '/renter_profile' : (context) => const RenterProfilePage(),
         '/owner_profile' : (context) => const OwnerProfilePage(),
