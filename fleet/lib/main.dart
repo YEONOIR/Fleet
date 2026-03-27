@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'pages/login.dart';
 import 'pages/signup.dart';
 import 'pages/renter/renter_main.dart';
+import 'pages/renter/renter_topup.dart';
 
 void main() {
   runApp(const MainApp());
@@ -20,6 +21,7 @@ class MainApp extends StatelessWidget {
         '/': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
         '/renter': (context) => const RenterMainPage(),
+        '/renter/topup': (context) => const RenterTopUpPage(),
       },
     );
   }
