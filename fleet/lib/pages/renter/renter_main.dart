@@ -15,6 +15,7 @@ class RenterMainPage extends StatefulWidget {
 
 class _RenterMainPageState extends State<RenterMainPage> {
   int _currentIndex = 0;
+  bool _isInit = false; 
 
   final List<Widget> _pages = const [
     RenterHomePage(),
@@ -24,9 +25,24 @@ class _RenterMainPageState extends State<RenterMainPage> {
     RenterProfilePage(),
   ];
 
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      
+      if (args != null && args.containsKey('initialIndex')) {
+        _currentIndex = args['initialIndex'];
+      }
+      _isInit = true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
