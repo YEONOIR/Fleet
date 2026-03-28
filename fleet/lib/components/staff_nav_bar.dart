@@ -42,7 +42,7 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
       end: widget.currentIndex.toDouble(),
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOutBack, // 💡 ใช้ curve แบบสะท้อนนิดๆ จะดูพรีเมียมขึ้น
+      curve: Curves.easeOutCubic, // 💡 เปลี่ยน Curve ให้พริ้วไหลลื่นขึ้น
     ));
   }
 
@@ -55,7 +55,7 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
         end: widget.currentIndex.toDouble(),
       ).animate(CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeOutBack,
+        curve: Curves.easeOutCubic,
       ));
       _animationController.forward(from: 0.0);
     }
@@ -75,11 +75,11 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
       animation: _positionAnimation,
       builder: (context, child) {
         return SizedBox(
-          height: 100, // 💡 เพิ่มความสูงให้ครอบคลุมส่วนที่ลอยขึ้นมา
+          height: 100, 
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // 1. ตัวพื้นหลัง Gradient พร้อมรอยเว้า
+              // 1. ตัวพื้นหลัง Gradient พร้อมรอยเว้าแบบใหม่
               Positioned(
                 bottom: 0,
                 child: CustomPaint(
@@ -111,7 +111,7 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
                           opacity: isActive ? 0.0 : 1.0,
                           child: Icon(
                             _outlinedIcons[index],
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withOpacity(0.8),
                             size: 28,
                           ),
                         ),
@@ -121,21 +121,21 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
                 ),
               ),
 
-              // 3. 💡 วงกลมสีขาวที่ลอยอยู่เหนือรอยเว้า (Selected)
+              // 3. วงกลมที่ลอยอยู่ในรอยเว้า (Selected)
               Positioned(
                 left: _getActiveIconX(screenWidth, _positionAnimation.value),
-                top: 5, // 💡 ขยับให้ลอยอยู่กึ่งกลางรอยเว้าพอดี
+                top: 8, // 💡 ปรับให้จมลงไปในหลุมเว้าพอดีตามภาพ
                 child: Container(
-                  width: 54,
-                  height: 54,
+                  width: 56, // 💡 ขยายขนาดขึ้นนิดนึงให้ดูเต็มหลุม
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.grey.shade200, // 💡 สีเทาอ่อนเหมือนในภาพเรฟเฟอเรนซ์
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -155,10 +155,11 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
 
   double _getActiveIconX(double screenWidth, double animatedIndex) {
     final itemWidth = screenWidth / 3;
-    return (animatedIndex * itemWidth) + (itemWidth / 2) - 27;
+    return (animatedIndex * itemWidth) + (itemWidth / 2) - 28; // 28 คือครึ่งนึงของ width 56
   }
 }
 
+// 💡 สร้างรูปร่างรอยเว้าใหม่ทั้งหมด
 class _NavBarPainter extends CustomPainter {
   final double animatedIndex;
   final int itemCount;
@@ -181,35 +182,36 @@ class _NavBarPainter extends CustomPainter {
     final notchCenterX = (animatedIndex * itemWidth) + (itemWidth / 2);
 
     final path = Path();
-    const curveRadius = 38.0; // 💡 ความกว้างของปากรอยเว้า
+    const double notchWidth = 96.0; // ความกว้างของรอยเว้า (ให้กว้างพอรับกับวงกลม 56px)
+    const double notchDepth = 48.0; // ความลึกของรอยเว้า
     
-    path.moveTo(0, 0); // เริ่มที่มุมซ้ายบนของตัว Bar (ที่ความสูง 80)
+    path.moveTo(0, 0); 
     
-    // วาดเส้นตรงมาจนถึงก่อนเริ่มรอยเว้า
-    path.lineTo(notchCenterX - curveRadius - 15, 0);
+    // เส้นตรงด้านซ้ายก่อนถึงรอยเว้า
+    path.lineTo(notchCenterX - (notchWidth / 2), 0);
     
-    // วาดส่วนโค้งเว้าลงไป (Notch) แบบพริ้วๆ
-    path.quadraticBezierTo(
-      notchCenterX - curveRadius, 0, 
-      notchCenterX - curveRadius + 10, 8,
+    // 💡 วาดส่วนเว้า (Notch) ทรงกระดิ่งคว่ำให้สมูทที่สุด (Bezier Curve)
+    // โค้งซ้ายลง
+    path.cubicTo(
+      notchCenterX - 25, 0, 
+      notchCenterX - 35, notchDepth, 
+      notchCenterX, notchDepth,
     );
-    path.arcToPoint(
-      Offset(notchCenterX + curveRadius - 10, 8),
-      radius: const Radius.circular(30),
-      clockwise: false,
-    );
-    path.quadraticBezierTo(
-      notchCenterX + curveRadius, 0, 
-      notchCenterX + curveRadius + 15, 0,
+    // โค้งขวาขึ้น
+    path.cubicTo(
+      notchCenterX + 35, notchDepth, 
+      notchCenterX + 25, 0, 
+      notchCenterX + (notchWidth / 2), 0,
     );
     
+    // เส้นตรงด้านขวาไปจนสุด
     path.lineTo(size.width, 0);
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();
 
-    // วาดเงาให้ตัว Bar นิดนึงให้ดูมีมิติ
-    canvas.drawShadow(path.shift(const Offset(0, -1)), Colors.black.withOpacity(0.3), 5.0, true);
+    // วาดเงาเพื่อเพิ่มมิติให้ตัวบาร์
+    canvas.drawShadow(path.shift(const Offset(0, -3)), Colors.black.withOpacity(0.2), 10.0, true);
     canvas.drawPath(path, paint);
   }
 
