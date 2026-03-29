@@ -10,17 +10,17 @@ class RenterTopUpPage extends StatefulWidget {
 class _RenterTopUpPageState extends State<RenterTopUpPage> {
   int _currentCredit = 100;
   int? _selectedAmount;
+  int? _selectedBankIndex;
 
   final List<int> _amounts = [100, 200, 300, 400];
 
-  // Bank data with colors
+  // Bank data with logo images
   static const List<Map<String, dynamic>> _banks = [
-    {'name': 'SCB', 'color': Color(0xFF4E2A84), 'icon': Icons.account_balance},
-    {'name': 'KBank', 'color': Color(0xFF138D3B), 'icon': Icons.account_balance},
-    {'name': 'BBL', 'color': Color(0xFF1A3C8F), 'icon': Icons.account_balance},
-    {'name': 'KTB', 'color': Color(0xFF00A1E4), 'icon': Icons.account_balance},
-    {'name': 'GSB', 'color': Color(0xFFE91E63), 'icon': Icons.account_balance},
-    {'name': 'Oom Sin', 'color': Color(0xFFFF6F00), 'icon': Icons.account_balance},
+    {'name': 'SCB', 'color': Color(0xFF4E2A84), 'image': 'assets/images/bank_scb.jpg'},
+    {'name': 'KBank', 'color': Color(0xFF138D3B), 'image': 'assets/images/bank_kbank.jpg'},
+    {'name': 'BBL', 'color': Color(0xFF1A3C8F), 'image': 'assets/images/bank_bbl.png'},
+    {'name': 'KTB', 'color': Color(0xFF00A1E4), 'image': 'assets/images/bank_ktb.png'},
+    {'name': 'GSB', 'color': Color(0xFFE91E63), 'image': 'assets/images/bank_gsb.jpg'},
   ];
 
   @override
@@ -289,47 +289,70 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
         crossAxisCount: 3,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
-        childAspectRatio: 1,
+        childAspectRatio: 0.85,
       ),
       itemCount: _banks.length,
       itemBuilder: (context, index) {
         final bank = _banks[index];
+        final isSelected = _selectedBankIndex == index;
         return GestureDetector(
           onTap: () {
-            // Bank selection logic
+            setState(() {
+              _selectedBankIndex = isSelected ? null : index;
+            });
           },
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: (bank['color'] as Color).withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: (bank['color'] as Color).withValues(alpha: 0.4),
-                    width: 2,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected
+                        ? (bank['color'] as Color).withValues(alpha: 0.15)
+                        : Colors.white,
+                    border: Border.all(
+                      color: isSelected
+                          ? (bank['color'] as Color)
+                          : const Color(0xFFCE93D8).withValues(alpha: 0.5),
+                      width: isSelected ? 3 : 2,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: (bank['color'] as Color).withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: ClipOval(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Image.asset(
+                        bank['image'] as String,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
-                child: Center(
-                  child: Icon(
-                    bank['icon'] as IconData,
-                    color: bank['color'] as Color,
-                    size: 28,
+                const SizedBox(height: 8),
+                Text(
+                  bank['name'] as String,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? bank['color'] as Color
+                        : const Color(0xFF070E2A),
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                bank['name'] as String,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF070E2A),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -352,16 +375,18 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
           ),
         ),
         child: ElevatedButton(
-          onPressed: _selectedAmount != null
+          onPressed: (_selectedAmount != null && _selectedBankIndex != null)
               ? () {
+                  final bankName = _banks[_selectedBankIndex!]['name'];
                   setState(() {
                     _currentCredit += _selectedAmount!;
                     _selectedAmount = null;
+                    _selectedBankIndex = null;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Top up successful! New balance: $_currentCredit',
+                        'Top up successful via $bankName! New balance: $_currentCredit',
                         style: const TextStyle(fontFamily: 'Poppins'),
                       ),
                       backgroundColor: const Color(0xFF4A1942),
@@ -383,7 +408,7 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
               fontSize: 17,
-              color: _selectedAmount != null
+              color: (_selectedAmount != null && _selectedBankIndex != null)
                   ? Colors.white
                   : Colors.white.withValues(alpha: 0.5),
             ),
