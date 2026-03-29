@@ -28,6 +28,12 @@ flutter:
     - assets/images/bike.jpg
     - assets/images/car.jpg
     - assets/images/truck.jpg
+    # Bank logos
+    - assets/images/bank_scb.jpg
+    - assets/images/bank_bbl.png
+    - assets/images/bank_kbank.jpg
+    - assets/images/bank_gsb.jpg
+    - assets/images/bank_ktb.png
 
   fonts:
     - family: Poppins
