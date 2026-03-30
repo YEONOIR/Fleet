@@ -24,10 +24,12 @@ flutter:
   assets:
     - assets/icons/Logo.png
     - assets/icons/avatar.jpg
-    # Dummy image -> before implement backend we will import these
+    # Vehicle images
     - assets/images/bike.jpg
     - assets/images/car.jpg
-    - assets/images/truck.jpg
+    - assets/images/car2.jpg
+    - assets/images/car3.jpg
+    - assets/images/car4.jpg
     # Bank logos
     - assets/images/bank_scb.jpg
     - assets/images/bank_bbl.png

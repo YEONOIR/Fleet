@@ -26,7 +26,7 @@ class ScheduleDetailPage extends StatelessWidget {
     final List<String> assetImages = [
       'assets/images/car.jpg',
       'assets/images/bike.jpg',
-      'assets/images/truck.jpg',
+      'assets/images/car2.jpg',
     ];
 
     return Container(
