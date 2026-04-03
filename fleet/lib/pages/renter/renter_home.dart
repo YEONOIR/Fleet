@@ -1,64 +1,62 @@
 import 'package:flutter/material.dart';
+// อย่าลืม import ไฟล์ vehicle_info_card.dart ให้ตรงกับ path ของโปรเจคด้วยนะครับ
+import '../../components/vehicle_info_card.dart'; 
+import 'vehicle_rent_detail.dart';
 
 class RenterHomePage extends StatelessWidget {
   const RenterHomePage({super.key});
 
-  // Mock data for top 5 cars
+  // Mock data for top 5 cars (อัปเดตให้ตรงกับที่ VehicleInfoCard ต้องการ)
   static const List<Map<String, dynamic>> _topCars = [
     {
       'name': "Sukrit's Honda",
-      'rating': 4.5,
+      'rating': '4.5',
       'plate': 'AB 1222',
       'model': 'Civic e:HEV',
-      'type': '4 Door Car',
+      'vType': '4 Door Car',
       'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
       'price': 250,
-      'icon': Icons.directions_car,
-      'color': Color(0xFF1A1A2E),
+      'image': 'assets/images/car.jpg', // สามารถแก้ path รูปให้ตรงกับที่มีในโฟลเดอร์ assets ได้เลย
     },
     {
       'name': "Pimthida's Bike",
-      'rating': 4.5,
+      'rating': '4.5',
       'plate': 'BB 567',
       'model': 'GRAND FILANO HYBRID',
-      'type': 'Motorcycle',
+      'vType': 'Motorcycle',
       'address': '222 JJ Village, Loo Road, Llama, Penguin, Bangkok 22222',
       'price': 80,
-      'icon': Icons.two_wheeler,
-      'color': Color(0xFF4A1942),
+      'image': 'assets/images/bike.jpg',
     },
     {
       'name': "Aran's Toyota",
-      'rating': 4.3,
+      'rating': '4.3',
       'plate': 'CC 8901',
       'model': 'Camry 2.5 HEV',
-      'type': '4 Door Car',
+      'vType': '4 Door Car',
       'address': '333 Siam Square, Pathum Wan, Bangkok 10330',
       'price': 300,
-      'icon': Icons.directions_car,
-      'color': Color(0xFF16213E),
+      'image': 'assets/images/car2.jpg',
     },
     {
       'name': "Nari's Mazda",
-      'rating': 4.0,
+      'rating': '4.0',
       'plate': 'DD 2345',
       'model': 'Mazda 3 Hatchback',
-      'type': 'Hatchback',
+      'vType': 'Hatchback',
       'address': '444 Sukhumvit Rd, Khlong Toei, Bangkok 10110',
       'price': 220,
-      'icon': Icons.directions_car,
-      'color': Color(0xFF1A1A2E),
+      'image': 'assets/images/car3.jpg',
     },
     {
       'name': "Krit's BMW",
-      'rating': 4.8,
+      'rating': '4.8',
       'plate': 'EE 6789',
       'model': 'X3 xDrive30e',
-      'type': 'SUV',
+      'vType': 'SUV',
       'address': '555 Silom Rd, Bang Rak, Bangkok 10500',
       'price': 450,
-      'icon': Icons.directions_car,
-      'color': Color(0xFF4A1942),
+      'image': 'assets/images/car4.jpg',
     },
   ];
 
@@ -97,13 +95,28 @@ class RenterHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // ── Car Cards ──
-            ...List.generate(_topCars.length, (index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildCarCard(_topCars[index]),
-              );
-            }),
+            // ── Car Cards (เรียกใช้ผ่าน Component ใหม่) ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20), 
+              child: Column(
+                children: List.generate(_topCars.length, (index) {
+                  return VehicleInfoCard(
+                    data: _topCars[index],
+                    // 💡 เพิ่ม onTap ให้มันลิงก์ไปหน้า Detail
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VehicleRentDetailPage(
+                            vehicleData: _topCars[index],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ),
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -365,168 +378,6 @@ class RenterHomePage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  // ─────────── Car Card ───────────
-  Widget _buildCarCard(Map<String, dynamic> car) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              (car['color'] as Color).withValues(alpha: 0.9),
-              (car['color'] as Color).withValues(alpha: 0.6),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (car['color'] as Color).withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title row with rating
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      car['name'] as String,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFC107),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star, size: 14, color: Colors.white),
-                        const SizedBox(width: 3),
-                        Text(
-                          (car['rating'] as num).toString(),
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Content row: image + details
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Car image placeholder
-                  Container(
-                    width: 110,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white.withValues(alpha: 0.15),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        car['icon'] as IconData,
-                        size: 48,
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _detailRow(Icons.credit_card, 'License plate: ${car['plate']}'),
-                        const SizedBox(height: 3),
-                        _detailRow(Icons.directions_car_outlined, 'Model: ${car['model']}'),
-                        const SizedBox(height: 3),
-                        _detailRow(Icons.category_outlined, 'Type: ${car['type']}'),
-                        const SizedBox(height: 3),
-                        _detailRow(Icons.location_on_outlined, car['address'] as String),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              'Price ',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            ),
-                            Text(
-                              '${car['price']} ฿ / Hr.',
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFFFC107),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.7)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: Colors.white.withValues(alpha: 0.9),
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

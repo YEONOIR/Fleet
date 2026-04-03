@@ -72,7 +72,7 @@ class _StaffHomePageState extends State<StaffHomePage> {
       'vType': 'Pickup Truck',
       'address': '55 Moo 5, Chiang Mai, Thailand 50000',
       'price': '500',
-      'image': 'assets/images/truck.jpg',
+      'image': 'assets/images/car2.jpg',
 
       'V Name': "Mario's Truck",
       'V_Rate': 3.9,
@@ -83,7 +83,7 @@ class _StaffHomePageState extends State<StaffHomePage> {
       'V Fuel': 'Diesel',
       'V Address': '55 Moo 5, Chiang Mai, Thailand 50000',
       'V Price': 500,
-      'imagePath': 'assets/images/truck.jpg',
+      'imagePath': 'assets/images/car2.jpg',
     },
   ];
 
@@ -213,7 +213,7 @@ class _StaffHomePageState extends State<StaffHomePage> {
           ),
 
           // ==========================================
-          // 4. List View (อัปเดตระบบกด Click)
+          // 4. List View 
           // ==========================================
           Expanded(
             child: displayList.isEmpty
@@ -233,19 +233,19 @@ class _StaffHomePageState extends State<StaffHomePage> {
                     itemCount: displayList.length,
                     itemBuilder: (context, index) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 15), // ปรับระยะห่างให้พอดีเมื่อไม่มีปุ่ม
-                        child: GestureDetector(
-                          // 💡 เมื่อกดที่การ์ด ให้ลิงก์ไปที่หน้า VehicleRequestPage
+                        padding: const EdgeInsets.only(bottom: 15),
+                        // 💡 เปลี่ยนมาส่ง onTap เข้าไปในการ์ดโดยตรง
+                        child: VehicleInfoCard(
+                          data: displayList[index],
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
+                                // หน้า staff จะส่งไปที่ VehicleRequestPage
                                 builder: (context) => VehicleRequestPage(vehicle: displayList[index]),
                               ),
                             );
                           },
-                          // เพิ่มเอฟเฟกต์ InkWell หรือปล่อยไว้แบบนี้ก็ได้
-                          child: VehicleInfoCard(data: displayList[index]),
                         ),
                       );
                     },
