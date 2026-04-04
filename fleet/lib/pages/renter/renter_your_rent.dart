@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'renter_schedule_detail.dart';
 
 class RenterYourRentPage extends StatefulWidget {
   const RenterYourRentPage({super.key});
@@ -39,7 +40,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
 
   // ── Mock rent data ──
   // Each item has a 'status' field matching a tab index
-  static const List<Map<String, dynamic>> _rentData = [
+  List<Map<String, dynamic>> _rentData = [
     // ── Accept (index 0) ──
     {
       'name': "Sukrit's Honda",
@@ -293,7 +294,32 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: _buildRentCard(items[index], tabIndex),
+          child: GestureDetector(
+            onTap: () async {
+              // 💡 พากดเข้าหน้ารายละเอียด และรอรับค่าสถานะใหม่กลับมา
+              final newStatus = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RenterScheduleDetailPage(booking: items[index]),
+                ),
+              );
+              
+              // 💡 ถ้ามีการอัปเดตสถานะ เช่น จาก 0 (Accept) กลายเป็น 1 (Using) หรือ 3 (Cancel)
+              // ให้ทำการ setState อัปเดตค่าในลิสต์หลัก
+              if (newStatus != null && newStatus is int) {
+                setState(() {
+                  // หา index ดั้งเดิมใน _rentData แล้วอัปเดต
+                  int originalIndex = _rentData.indexOf(items[index]);
+                  if (originalIndex != -1) {
+                    _rentData[originalIndex]['status'] = newStatus;
+                  }
+                });
+                // 💡 สลับ Tab ไปหน้าใหม่ให้อัตโนมัติด้วย
+                _tabController.animateTo(newStatus);
+              }
+            },
+            child: _buildRentCard(items[index], tabIndex),
+          ),
         );
       },
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'renter_car_detail.dart';  
 
 class RenterSearchPage extends StatefulWidget {
   const RenterSearchPage({super.key});
@@ -284,7 +285,17 @@ class _RenterSearchPageState extends State<RenterSearchPage>
                       }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildVehicleCard(filtered[index - 1]),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RenterCarDetailPage(car: filtered[index - 1]),
+                              ),
+                            );
+                          },
+                          child: _buildVehicleCard(filtered[index - 1]),
+                        ),
                       );
                     },
                   ),

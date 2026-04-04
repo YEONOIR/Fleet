@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'renter_car_detail.dart';
 
 class RenterHomePage extends StatelessWidget {
   const RenterHomePage({super.key});
@@ -101,7 +102,17 @@ class RenterHomePage extends StatelessWidget {
             ...List.generate(_topCars.length, (index) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: _buildCarCard(_topCars[index]),
+                child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RenterCarDetailPage(car: _topCars[index]),
+                      ),
+                    );
+                  },
+                  child: _buildCarCard(_topCars[index]),
+                ),
               );
             }),
             const SizedBox(height: 20),
