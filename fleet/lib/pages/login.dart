@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
+import 'signup.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -61,40 +62,46 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 130),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-                        child: Container(
-                          width: 330,
-                          padding: const EdgeInsets.only(top: 100, bottom: 40),
-                          decoration: BoxDecoration(
-                            color: const Color.fromRGBO(217, 217, 217, 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GradientText(
-                                "Login",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 32,
-                                  fontFamily: "Poppins",
+                    child: Hero(
+                      tag: 'glass_form',
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                            child: Container(
+                              width: 330,
+                              padding: const EdgeInsets.only(top: 100, bottom: 40),
+                              decoration: BoxDecoration(
+                                color: const Color.fromRGBO(217, 217, 217, 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
                                 ),
-                                colors: const [
-                                  Color.fromRGBO(172, 114, 161, 1.0),
-                                  Color.fromRGBO(7, 14, 42, 1.0),
-                                ],
-                                gradientDirection: GradientDirection.btt,
                               ),
-                              _loginInput(),
-                              const SizedBox(height: 20),
-                              _createAccount(),
-                            ],
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GradientText(
+                                    "Login",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 32,
+                                      fontFamily: "Poppins",
+                                    ),
+                                    colors: const [
+                                      Color.fromRGBO(172, 114, 161, 1.0),
+                                      Color.fromRGBO(7, 14, 42, 1.0),
+                                    ],
+                                    gradientDirection: GradientDirection.btt,
+                                  ),
+                                  _loginInput(),
+                                  const SizedBox(height: 20),
+                                  _createAccount(),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -102,10 +109,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const Positioned(
                     top: 0,
-                    child: Image(
-                      height: 220,
-                      width: 220,
-                      image: AssetImage("assets/icons/Logo.png"),
+                    child: Hero(
+                      tag: 'app_logo',
+                      child: Image(
+                        height: 220,
+                        width: 220,
+                        image: AssetImage("assets/icons/Logo.png"),
+                      ),
                     ),
                   ),
                 ],
@@ -211,7 +221,17 @@ class _LoginPageState extends State<LoginPage> {
   Widget _createAccount() {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/signup');
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 800),
+            reverseTransitionDuration: const Duration(milliseconds: 800),
+            pageBuilder: (context, animation, secondaryAnimation) => const SignUpPage(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
       },
       child: const Text(
         'Create an account',

@@ -113,18 +113,24 @@ class _SignUpPageState extends State<SignUpPage> {
                 // Top glassmorphism card (form area)
                 Positioned(
                   top: 30,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-                      child: Container(
-                        width: 330,
-                        height: 660,
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(217, 217, 217, 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.3),
+                  child: Hero(
+                    tag: 'glass_form',
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                          child: Container(
+                            width: 330,
+                            height: 660,
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(217, 217, 217, 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -309,10 +315,13 @@ class _SignUpPageState extends State<SignUpPage> {
                               ),
                             ),
                             child: const Center(
-                              child: Image(
-                                height: 180,
-                                width: 180,
-                                image: AssetImage("assets/icons/Logo.png"),
+                              child: Hero(
+                                tag: 'app_logo',
+                                child: Image(
+                                  height: 180,
+                                  width: 180,
+                                  image: AssetImage("assets/icons/Logo.png"),
+                                ),
                               ),
                             ),
                           ),
