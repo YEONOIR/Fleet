@@ -1,12 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'owner/check_hand_in.dart'; // เตรียมส่งไปหน้าตรวจสภาพ
-import 'owner/add_vehicle.dart'; // 💡 นำเข้าหน้า Add Vehicle
+import 'owner/check_hand_in.dart'; 
+import 'owner/add_vehicle.dart'; 
+import 'staff/check_vehicle.dart'; 
 
 class TakePhotoPage extends StatefulWidget {
   final String vehicleName;
-  const TakePhotoPage({super.key, required this.vehicleName});
+  final bool isStaff; 
+  
+  const TakePhotoPage({
+    super.key, 
+    required this.vehicleName, 
+    this.isStaff = false, 
+  });
 
   @override
   State<TakePhotoPage> createState() => _TakePhotoPageState();
@@ -29,12 +36,17 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // 💡 2. ฟังก์ชันเด้ง Bottom Sheet ให้เลือกว่าจะถ่ายหรือเลือกจาก Gallery
+  // 💡 2. ฟังก์ชันเด้ง Bottom Sheet หรือ เปิดกล้องทันที
   void _showPickerOptions(int index) {
     bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
     
-    // ถ้าเป็นการเพิ่มรถใหม่ ให้มีสิทธิ์เลือกจากแกลเลอรี่ได้
-    if (isNewVehicle) {
+    // 💡 แก้ไขเงื่อนไขตรงนี้: 
+    // ถ้าเป็น Staff (ตรวจสอบรถ) หรือ Owner (รับรถคืน) ให้บังคับเปิดกล้องถ่ายสดทันที
+    if (widget.isStaff || !isNewVehicle) {
+      _pickImage(index, ImageSource.camera);
+    } 
+    // ถ้าเป็น Owner (เพิ่มรถใหม่ หรือ แก้ไขรูป) ถึงจะยอมให้เลือกแกลเลอรี่ได้
+    else {
       showModalBottomSheet(
         context: context,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -61,13 +73,10 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
           ),
         ),
       );
-    } else {
-      // แต่ถ้าเป็นการรับรถคืน บังคับให้ใช้กล้องถ่ายสดๆ เท่านั้น
-      _pickImage(index, ImageSource.camera);
     }
   }
 
-  // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไข)
+  // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไขตามการใช้งาน)
   void _goToNextPage() {
     if (afterImages.contains(null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,11 +88,29 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     List<File> completedImages = afterImages.whereType<File>().toList();
     List<String> allImagePaths = completedImages.map((file) => file.path).toList();
 
-    // 💡 โหมดแก้ไขรูปภาพ (ส่งรูปกลับไปหน้าเดิม)
-    if (widget.vehicleName == 'Edit Photos') {
+    // ==========================================
+    // 💡 การนำทาง (Navigation) แบบแยกเงื่อนไข
+    // ==========================================
+
+    // 1. โหมด Staff ตรวจสอบรถ
+    if (widget.isStaff) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckVehiclePage(
+            vehicleName: widget.vehicleName,
+            // สมมติรูปรถของ Owner ก่อน เดี๋ยวตอนเชื่อม Database จริงค่อยดึงมาใส่
+            ownerImages: const ['assets/images/car.jpg', 'assets/images/car.jpg'], 
+            staffImages: completedImages,
+          ),
+        ),
+      );
+    } 
+    // 2. โหมด Owner แก้ไขรูปภาพ
+    else if (widget.vehicleName == 'Edit Photos') {
       Navigator.pop(context, allImagePaths); 
     } 
-    // 💡 โหมดเพิ่มรถใหม่ (เปิดหน้า Add Vehicle)
+    // 3. โหมด Owner เพิ่มรถใหม่
     else if (widget.vehicleName == 'New Vehicle') {
       Navigator.pushReplacement( 
         context,
@@ -92,7 +119,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
         ),
       );
     } 
-    // 💡 โหมดคืนรถ (ไปหน้า Check Hand In)
+    // 4. โหมด Owner คืนรถ
     else {
       Navigator.push(
         context,
@@ -118,7 +145,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
           ),
         ),
         title: Text(
-          isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos', 
+          widget.isStaff ? 'Staff Check Photos' : (isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos'), 
           style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)
         ),
         centerTitle: true,
@@ -133,14 +160,16 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    isNewVehicle ? 'Upload Vehicle Angles' : widget.vehicleName, 
+                    widget.isStaff ? widget.vehicleName : (isNewVehicle ? 'Upload Vehicle Angles' : widget.vehicleName), 
                     style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold)
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    isNewVehicle 
-                      ? 'Please take or upload 4 photos of the vehicle for the listing.'
-                      : 'Please take 4 photos to verify the current condition of the vehicle.', 
+                    widget.isStaff 
+                      ? 'Please take 4 photos of the vehicle to verify its condition before approval.'
+                      : (isNewVehicle 
+                        ? 'Please take or upload 4 photos of the vehicle for the listing.'
+                        : 'Please take 4 photos to verify the current condition of the vehicle.'), 
                     textAlign: TextAlign.center, 
                     style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)
                   ),
@@ -159,7 +188,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                     itemCount: 4,
                     itemBuilder: (context, index) {
                       return GestureDetector(
-                        onTap: () => _showPickerOptions(index), // 💡 3. เรียกใช้ฟังก์ชันเลือกรูปตรงนี้
+                        onTap: () => _showPickerOptions(index), 
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
@@ -191,18 +220,20 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
           // ปุ่ม Next
           Padding(
             padding: const EdgeInsets.all(20.0),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: _goToNextPage, 
-                child: Text(
-                  isNewVehicle ? 'Next to Add Details' : 'Next to Inspection', 
-                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: _goToNextPage, 
+                  child: Text(
+                    widget.isStaff ? 'Next to Verification' : (isNewVehicle ? 'Next to Add Details' : 'Next to Inspection'), 
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+                  ),
                 ),
               ),
             ),
