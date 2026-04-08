@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'renter_your_rent.dart'; // 💡 อย่าลืม import ให้ตรง path เพื่อใช้เชื่อมกลับไปหน้าแท็บหลัก
+
 
 class RentHistoryDetailPage extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -10,6 +12,9 @@ class RentHistoryDetailPage extends StatelessWidget {
     final int statusIndex = car['status'] as int;
     final String statusString = _getStatusString(statusIndex);
     final Color statusColor = _getStatusColor(statusIndex);
+    
+    // 💡 ดึงค่า pendingType ออกมาเช็ค (ถ้าไม่มีให้ถือว่าเป็น 'rent' ไว้ก่อน)
+    final String pendingType = car['pendingType'] ?? 'rent';
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
@@ -45,14 +50,31 @@ class RentHistoryDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Image Banner
+                  // 1. Image Gallery 
                   Container(
-                    height: 200,
+                    height: 140,
                     width: double.infinity,
-                    color: Colors.grey[300],
-                    child: Image.asset(
-                      car['image'] as String,
-                      fit: BoxFit.cover,
+                    color: Colors.grey.shade200,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                      itemCount: 3, 
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(right: 15),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            car['image'] ?? 'assets/images/car.jpg', 
+                            width: 130,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              width: 130, 
+                              color: Colors.grey.shade300, 
+                              child: const Icon(Icons.directions_car, color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
 
@@ -162,21 +184,20 @@ class RentHistoryDetailPage extends StatelessWidget {
 
                         const Divider(height: 40),
 
-                        // 5. ตรวจสอบสถานะ: ถ้า Cancel โชว์เหตุผล ถ้าไม่ใช่ โชว์ Booking Detail
                         if (statusString == 'CANCEL')
                           _buildCancelReason()
                         else
                           _buildBookingInfo(),
 
-                        // แสดงรูป ก่อนเช่า แค่ในสถานะ USING กับ COMPLETE
-                        if (statusString == 'USING' || statusString == 'COMPLETE')
+                        // 💡 5. โชว์รูปภาพ Before Rent ถ้าเป็น USING, COMPLETE, หรือ PENDING(แบบคืนรถ)
+                        if (statusString == 'USING' || statusString == 'COMPLETE' || (statusString == 'PENDING' && pendingType == 'return'))
                           _buildBeforeRentImages(),
                         
-                        // 6. แสดงกล่อง Defect สำหรับสถานะ COMPLETE
                         if (statusString == 'COMPLETE')
                           _buildDefectInfo(),
                           
-                        if (statusString == 'PENDING') _buildPendingInfo(),
+                        // 💡 6. ส่ง pendingType เข้าไปเช็คในฟังก์ชัน PendingInfo
+                        if (statusString == 'PENDING') _buildPendingInfo(pendingType),
                       ],
                     ),
                   ),
@@ -185,11 +206,11 @@ class RentHistoryDetailPage extends StatelessWidget {
             ),
           ),
 
-          // Action Button (ปุ่มด้านล่าง)
-          if (statusString == 'ACCEPT' || statusString == 'PENDING' || statusString == 'USING')
+          // 💡 7. Action Button (ซ่อนปุ่มถ้าเป็น PENDING แบบคืนรถ)
+          if (statusString == 'ACCEPT' || (statusString == 'PENDING' && pendingType == 'rent') || statusString == 'USING')
             Padding(
               padding: const EdgeInsets.all(20),
-              child: _buildActionButton(statusString),
+              child: _buildActionButton(context, statusString),
             ),
         ],
       ),
@@ -204,7 +225,7 @@ class RentHistoryDetailPage extends StatelessWidget {
     switch (index) {
       case 0: return const Color(0xFF2E7D6E); // Accept
       case 1: return const Color.fromRGBO(172, 114, 161, 1.0); // Using
-      case 2: return const Color(0xFF31A1D1); // Complete (สีฟ้า)
+      case 2: return const Color(0xFF31A1D1); // Complete
       case 3: return const Color(0xFFC62828); // Cancel
       case 4: return const Color(0xFFE6A817); // Pending
       default: return Colors.grey;
@@ -304,8 +325,6 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 อัปเดตกล่อง เหตุผลการยกเลิก ตามโค้ดต้นฉบับที่คุณให้มา
-  // 💡 อัปเดตกล่อง เหตุผลการยกเลิก ให้พื้นหลังสีขาวเหมือน Booking Detail
   Widget _buildCancelReason() {
     final reason = car['cancelReason'];
     return Column(
@@ -320,7 +339,7 @@ class RentHistoryDetailPage extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: Colors.white, // เปลี่ยนพื้นหลังเป็นสีขาว
+            color: Colors.white,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -332,7 +351,6 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 อัปเดตกล่อง Defect ให้พื้นหลังสีขาวเหมือน Booking Detail
   Widget _buildDefectInfo() {
     final defect = car['defect'];
     return Column(
@@ -341,14 +359,14 @@ class RentHistoryDetailPage extends StatelessWidget {
         const SizedBox(height: 25),
         const Text(
           'Defect',
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF31A1D1)), 
+          style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF31A1D1)),
         ),
         const SizedBox(height: 5),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: Colors.white, // เปลี่ยนพื้นหลังเป็นสีขาว
+            color: Colors.white,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -368,16 +386,16 @@ class RentHistoryDetailPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 25),
-        const Text('Before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('Before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
         SizedBox(
-          height: 100,
+          height: 120,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: images.length,
             itemBuilder: (context, index) => Container(
-              margin: const EdgeInsets.only(right: 10),
-              width: 130,
+              margin: const EdgeInsets.only(right: 15),
+              width: 120,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 image: DecorationImage(
@@ -392,26 +410,52 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPendingInfo() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 20),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.hourglass_empty_rounded, size: 50, color: Color(0xFFE6A817)),
-            SizedBox(height: 15),
-            Text(
-              'Waiting for owner confirmation\nplease wait for response',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black54),
-            ),
-          ],
+  // 💡 แยก UI ของข้อความ Pending ทั้ง 2 แบบ
+  Widget _buildPendingInfo(String pendingType) {
+    if (pendingType == 'return') {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 30),
+        child: Center(
+          child: Column(
+            children: [
+              // 💡 เปลี่ยนจาก Icons.access_time_filled เป็นนาฬิกาทราย
+              Icon(Icons.hourglass_bottom, size: 50, color: Color(0xFFE6A817)),
+              SizedBox(height: 15),
+              Text(
+                'Waiting for owner to confirm the return\nplease wait for response',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black54),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      // แบบรอเช่ารถ
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 30),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.hourglass_empty_rounded, size: 50, color: Color(0xFFE6A817)),
+              SizedBox(height: 15),
+              Text(
+                'Waiting for owner confirmation\nplease wait for response',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black54),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
-  Widget _buildActionButton(String status) {
+  // ==========================================
+  // ส่วนปุ่มและการทำงาน (Actions)
+  // ==========================================
+  Widget _buildActionButton(BuildContext context, String status) {
+    // 💡 ถ้าเป็น Accept หรือ Pending(แบบเช่า) ให้แสดงปุ่มยกเลิก
     if (status == 'PENDING' || status == 'ACCEPT') {
       return SizedBox(
         width: double.infinity,
@@ -422,7 +466,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             side: const BorderSide(color: Color(0xFFC62828)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           ),
-          onPressed: () {},
+          onPressed: () => _showCancelConfirmationModal(context, status),
           child: const Text('Cancel Booking', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       );
@@ -435,11 +479,113 @@ class RentHistoryDetailPage extends StatelessWidget {
             backgroundColor: const Color.fromRGBO(172, 114, 161, 1.0),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           ),
-          onPressed: () {},
+          onPressed: () => _showReturnConfirmationModal(context), 
           child: const Text('Return Vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       );
     }
     return const SizedBox.shrink();
+  }
+
+  void _showCancelConfirmationModal(BuildContext context, String status) {
+    bool isAccept = status == 'ACCEPT';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFC62828), size: 28),
+            SizedBox(width: 8),
+            Text(
+              'Cancel Booking', 
+              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFFC62828))
+            ),
+          ],
+        ),
+        content: Text(
+          isAccept 
+            ? 'Are you sure you want to cancel this booking?\n\nWarning: Since the owner has already accepted your request, your deposit will be deducted.'
+            : 'Are you sure you want to cancel this booking request?', 
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.5)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text('No, keep it', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            onPressed: () {
+              Navigator.pop(context); 
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RenterYourRentPage(initialIndex: 3), 
+                ),
+                (route) => false, 
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Booking cancelled successfully.', style: TextStyle(fontFamily: 'Poppins')),
+                  backgroundColor: Color(0xFFC62828),
+                )
+              );
+            },
+            child: const Text('Confirm Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReturnConfirmationModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Confirm Return', 
+          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))
+        ),
+        content: const Text(
+          'Are you sure you want to return this vehicle? The status will be moved to Pending.', 
+          style: TextStyle(fontFamily: 'Poppins', fontSize: 13)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color.fromRGBO(172, 114, 161, 1.0), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RenterYourRentPage(initialIndex: 4), 
+                ),
+                (route) => false, 
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Vehicle returned. Waiting for owner confirmation.', style: TextStyle(fontFamily: 'Poppins')),
+                  backgroundColor: Color(0xFF2E7D6E),
+                )
+              );
+            },
+            child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 }
