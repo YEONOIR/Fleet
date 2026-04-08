@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../components/history_card.dart'; // ใส่ path ให้ตรงกับโฟลเดอร์ของคุณ
+import 'rent_history.dart'; // ใส่ path ให้ตรงกับโฟลเดอร์ของคุณ
 
 class RenterYourRentPage extends StatefulWidget {
   const RenterYourRentPage({super.key});
@@ -38,7 +40,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
   ];
 
   // ── Mock rent data ──
-  // Each item has a 'status' field matching a tab index
   static const List<Map<String, dynamic>> _rentData = [
     // ── Accept (index 0) ──
     {
@@ -49,9 +50,16 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'type': '4 Door Car',
       'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
       'price': 250,
-      'image': 'assets/images/car.jpg',
+      'image': 'assets/images/car.jpg', // อย่าลืมใส่รูปจริงใน assets
       'status': 0,
+      'fuel': 'EV',
+      'deposit': 1000,
+      'owner': {'name': 'Sukrit', 'phone': '081-234-5678', 'rating': 4.8},
+      'booking': {'startDate': '10 Apr 2026', 'endDate': '12 Apr 2026', 'startTime': '10:00', 'endTime': '10:00', 'totalPrice': 12000},
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'],
     },
+
+    // ── Using (index 1) ──
     {
       'name': "Aran's Toyota",
       'rating': 4.3,
@@ -61,34 +69,15 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'address': '333 Siam Square, Pathum Wan, Bangkok 10330',
       'price': 300,
       'image': 'assets/images/car.jpg',
-      'status': 0,
-    },
-
-    // ── Using (index 1) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
       'status': 1,
+      'fuel': 'Gasohol 95',
+      'deposit': 1500,
+      'owner': {'name': 'Aran', 'phone': '089-876-5432', 'rating': 4.2},
+      'booking': {'startDate': '08 Apr 2026', 'endDate': '09 Apr 2026', 'startTime': '09:00', 'endTime': '18:00', 'totalPrice': 2700},
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg', 'assets/images/car.jpg'],
     },
 
-    // ── Complete (index 2) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
-      'status': 2,
-    },
+   // ── Complete (index 2) ──
     {
       'name': "Nari's Mazda",
       'rating': 4.0,
@@ -99,6 +88,13 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'price': 220,
       'image': 'assets/images/car.jpg',
       'status': 2,
+      'fuel': 'Diesel',
+      'deposit': 1000,
+      'owner': {'name': 'Nari', 'phone': '082-333-4444', 'rating': 4.5},
+      'booking': {'startDate': '01 Apr 2026', 'endDate': '03 Apr 2026', 'startTime': '12:00', 'endTime': '12:00', 'totalPrice': 10560},
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'],
+      // 💡 เพิ่มฟิลด์ defect ตรงนี้
+      'defect': 'พบรอยขีดข่วนเล็กน้อยที่กันชนหน้าซ้าย นอกนั้นปกติครับ', 
     },
 
     // ── Cancel (index 3) ──
@@ -112,20 +108,14 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'price': 250,
       'image': 'assets/images/car.jpg',
       'status': 3,
+      'fuel': 'EV',
+      'deposit': 1000,
+      'owner': {'name': 'Sukrit', 'phone': '081-234-5678', 'rating': 4.8},
+      'booking': {'startDate': '15 Apr 2026', 'endDate': '16 Apr 2026', 'startTime': '08:00', 'endTime': '20:00', 'totalPrice': 3000},
+      'beforeRentImages': [],
     },
 
     // ── Pending (index 4) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
-      'status': 4,
-    },
     {
       'name': "Krit's BMW",
       'rating': 4.8,
@@ -136,6 +126,11 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'price': 450,
       'image': 'assets/images/car.jpg',
       'status': 4,
+      'fuel': 'PHEV',
+      'deposit': 3000,
+      'owner': {'name': 'Krit', 'phone': '085-555-6666', 'rating': 4.9},
+      'booking': {'startDate': '20 Apr 2026', 'endDate': '22 Apr 2026', 'startTime': '10:00', 'endTime': '10:00', 'totalPrice': 21600},
+      'beforeRentImages': [],
     },
   ];
 
@@ -154,7 +149,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     super.dispose();
   }
 
-  // Get items for a given tab index
   List<Map<String, dynamic>> _itemsForTab(int tabIndex) {
     return _rentData.where((e) => e['status'] == tabIndex).toList();
   }
@@ -165,13 +159,8 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // ── Header ──
           _buildHeader(context),
-
-          // ── Tab bar ──
           _buildTabBar(),
-
-          // ── Tab content ──
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -185,7 +174,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     );
   }
 
-  // ─────────── Header ───────────
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -221,7 +209,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     );
   }
 
-  // ─────────── Tab Bar ───────────
   Widget _buildTabBar() {
     return Container(
       decoration: const BoxDecoration(
@@ -258,7 +245,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     );
   }
 
-  // ─────────── Tab Content ───────────
   Widget _buildTabContent(int tabIndex) {
     final items = _itemsForTab(tabIndex);
 
@@ -293,210 +279,24 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: _buildRentCard(items[index], tabIndex),
-        );
-      },
-    );
-  }
-
-  // ─────────── Rent Card ───────────
-  Widget _buildRentCard(Map<String, dynamic> car, int tabIndex) {
-    final gradientColors = _cardBorderGradients[tabIndex];
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors[0].withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: gradientColors[0],
-                width: 4,
-              ),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Title row + rating badge ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        car['name'] as String,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF070E2A),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFC107),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star,
-                              size: 14, color: Colors.white),
-                          const SizedBox(width: 3),
-                          Text(
-                            (car['rating'] as num).toString(),
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Content row: image + details ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Car image
-                    Container(
-                      width: 100,
-                      height: 85,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          car['image'] as String,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _detailRow(
-                              Icons.credit_card,
-                              'License plate: ${car['plate']}'),
-                          const SizedBox(height: 3),
-                          _detailRow(
-                              Icons.directions_car_outlined,
-                              'Model: ${car['model']}'),
-                          const SizedBox(height: 3),
-                          _detailRow(
-                              Icons.category_outlined,
-                              'Type: ${car['type']}'),
-                          const SizedBox(height: 3),
-                          _detailRow(
-                              Icons.location_on_outlined,
-                              car['address'] as String),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Price ',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF070E2A)
-                                      .withValues(alpha: 0.6),
-                                ),
-                              ),
-                              Text(
-                                '${car['price']} ฿ / Hr.',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFFFC107),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Status indicator bar at bottom ──
-              Container(
-                width: double.infinity,
-                height: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: gradientColors,
+          // เรียกใช้ HistoryCard ที่เพิ่งแยกออกไป
+          child: HistoryCard(
+            car: items[index],
+            gradientColors: _cardBorderGradients[tabIndex],
+            onTap: () {
+              // กดแล้วให้ไปยังหน้า Detail ที่แยกไว้
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RentHistoryDetailPage(
+                    car: items[index],
                   ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        ),
-      ),
-    );
-  }
-
-  // ─────────── Detail Row ───────────
-  Widget _detailRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon,
-            size: 14,
-            color: const Color(0xFF070E2A).withValues(alpha: 0.5)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF070E2A).withValues(alpha: 0.8),
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
