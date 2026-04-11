@@ -1,14 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 💡 เพิ่ม Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Firestore
 import '../edit_profile.dart';
 
-class RenterProfilePage extends StatelessWidget {
+class RenterProfilePage extends StatefulWidget {
   const RenterProfilePage({super.key});
+
+  @override
+  State<RenterProfilePage> createState() => _RenterProfilePageState();
+}
+
+class _RenterProfilePageState extends State<RenterProfilePage> {
+  // 💡 ตัวแปรเก็บข้อมูลจาก Firebase
+  String _firstName = "Loading...";
+  String _lastName = "";
+  String _email = "Loading...";
+  String _address = "Loading...";
+  String _profileImage = "";
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  // 💡 ฟังก์ชันดึงข้อมูลจาก Database
+  Future<void> _fetchUserData() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _firstName = userDoc['first_name'] ?? 'Unknown';
+            _lastName = userDoc['last_name'] ?? '';
+            _email = userDoc['email'] ?? currentUser.email ?? '';
+            _address = userDoc['address'] ?? 'No address provided';
+            _profileImage = userDoc['profile_image'] ?? '';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 💡 ฟังก์ชัน Logout ออกจากระบบ Firebase
+  Future<void> _handleLogout() async {
+    await FirebaseAuth.instance.signOut();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logged out successfully')),
+      );
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))) // วงแหวนโหลดตอนดึงข้อมูล
+        : Column(
         children: [
           Container(
             width: double.infinity,
@@ -45,6 +108,9 @@ class RenterProfilePage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
               child: Column(
                 children: [
+                  // ==========================================
+                  // 💡 ส่วนแสดงข้อมูลผู้ใช้ (เชื่อม Firebase แล้ว)
+                  // ==========================================
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -54,39 +120,43 @@ class RenterProfilePage extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.grey[200],
-                          image: const DecorationImage(
-                            image: AssetImage('assets/icons/avatar.jpg'),
+                          border: Border.all(color: Colors.grey.shade300, width: 1),
+                          image: DecorationImage(
+                            // 💡 เช็คว่ามีรูปใน Database ไหม ถ้าไม่มีใช้ Default
+                            image: _profileImage.isNotEmpty
+                                ? NetworkImage(_profileImage) as ImageProvider
+                                : const AssetImage('assets/icons/avatar.jpg'),
                             fit: BoxFit.cover,
                           ),
                         ),
                       ),
                       const SizedBox(width: 15),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Sukrit Chatchawal',
-                              style: TextStyle(
+                              '$_firstName $_lastName', // 💡 ชื่อจริง-นามสกุล
+                              style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: Color.fromRGBO(7, 14, 42, 1.0),
                               ),
                             ),
-                            SizedBox(height: 5),
+                            const SizedBox(height: 5),
                             Text(
-                              'Email : firstsukit189@gmail.com',
-                              style: TextStyle(
+                              'Email : $_email', // 💡 อีเมล
+                              style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13,
                                 color: Colors.black87,
                               ),
                             ),
-                            SizedBox(height: 5),
+                            const SizedBox(height: 5),
                             Text(
-                              'Address : 111/11, Ander Road,\nCromium, Roselina, Bangkok 11111',
-                              style: TextStyle(
+                              'Address : $_address', // 💡 ที่อยู่
+                              style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13,
                                 color: Colors.black87,
@@ -101,7 +171,6 @@ class RenterProfilePage extends StatelessWidget {
 
                   const SizedBox(height: 35),
 
-                  // 💡 3. อัปเดตปุ่ม Edit Profile ของ Renter
                   _buildProfileMenu(
                     icon: Icons.edit_outlined,
                     title: 'Edit profile',
@@ -109,7 +178,7 @@ class RenterProfilePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const EditProfilePage(), // 💡 พาไปหน้า EditProfilePage
+                          builder: (context) => const EditProfilePage(),
                         ),
                       );
                     },
@@ -167,17 +236,7 @@ class RenterProfilePage extends StatelessWidget {
                     icon: Icons.logout,
                     title: 'Log out',
                     isLogout: true,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Logged out successfully')),
-                      );
-
-                      Navigator.pushNamedAndRemoveUntil(
-                        context, 
-                        '/', 
-                        (route) => false, 
-                      );
-                    },
+                    onTap: _handleLogout, // 💡 เรียกฟังก์ชัน Logout ที่เขียนไว้ด้านบน
                   ),
 
                   const SizedBox(height: 100),

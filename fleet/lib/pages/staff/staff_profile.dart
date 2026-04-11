@@ -1,13 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 💡 เพิ่ม Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Firestore
 
-class StaffProfilePage extends StatelessWidget {
+class StaffProfilePage extends StatefulWidget {
   const StaffProfilePage({super.key});
+
+  @override
+  State<StaffProfilePage> createState() => _StaffProfilePageState();
+}
+
+class _StaffProfilePageState extends State<StaffProfilePage> {
+  // 💡 ตัวแปรเก็บข้อมูลจาก Firebase
+  String _firstName = "Loading...";
+  String _lastName = "";
+  String _email = "Loading...";
+  String _profileImage = "";
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  // 💡 ฟังก์ชันดึงข้อมูลจาก Database
+  Future<void> _fetchUserData() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _firstName = userDoc['first_name'] ?? 'Unknown';
+            _lastName = userDoc['last_name'] ?? '';
+            _email = userDoc['email'] ?? currentUser.email ?? '';
+            _profileImage = userDoc['profile_image'] ?? '';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // 💡 ฟังก์ชัน Logout ออกจากระบบ Firebase
+  Future<void> _handleLogout() async {
+    await FirebaseAuth.instance.signOut();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logged out successfully', style: TextStyle(fontFamily: 'Poppins')),
+        ),
+      );
+      // กลับไปหน้าแรกสุด
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))) // วงแหวนโหลดตอนดึงข้อมูล
+        : Column(
         children: [
           // ส่วนหัว (Header)
           Container(
@@ -57,30 +121,33 @@ class StaffProfilePage extends StatelessWidget {
                           shape: BoxShape.circle,
                           color: Colors.grey[200],
                           border: Border.all(color: const Color.fromRGBO(172, 114, 161, 0.5), width: 2), // เพิ่มกรอบให้ดูมีความเป็น Admin
-                          image: const DecorationImage(
-                            image: AssetImage('assets/icons/avatar.jpg'),
+                          image: DecorationImage(
+                            // 💡 เช็ครูปภาพจาก Firebase
+                            image: _profileImage.isNotEmpty
+                                ? NetworkImage(_profileImage) as ImageProvider
+                                : const AssetImage('assets/icons/avatar.jpg'),
                             fit: BoxFit.cover,
                           ),
                         ),
                       ),
                       const SizedBox(width: 20),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Sukrit Chatchawal',
-                              style: TextStyle(
+                              '$_firstName $_lastName', // 💡 ใช้ชื่อจาก Database
+                              style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: Color.fromRGBO(7, 14, 42, 1.0),
                               ),
                             ),
-                            SizedBox(height: 4),
-                            // ป้ายบอกตำแหน่ง Admin สีเด่นๆ
-                            Text(
-                              'Admin',
+                            const SizedBox(height: 4),
+                            // 💡 ป้ายบอกตำแหน่ง เปลี่ยนเป็น Staff แล้ว
+                            const Text(
+                              'Staff',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 14,
@@ -88,10 +155,10 @@ class StaffProfilePage extends StatelessWidget {
                                 color: Color.fromRGBO(172, 114, 161, 1.0),
                               ),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
-                              'Email : firstsukit189@gmail.com',
-                              style: TextStyle(
+                              'Email : $_email', // 💡 ใช้อีเมลจาก Database
+                              style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13,
                                 color: Colors.black87,
@@ -105,23 +172,12 @@ class StaffProfilePage extends StatelessWidget {
 
                   const SizedBox(height: 50), // ดันปุ่ม Logout ลงไปข้างล่างนิดนึง
 
-                  // ปุ่ม Log out (เหลือแค่อันเดียวตามที่คุณขอ)
+                  // ปุ่ม Log out
                   _buildProfileMenu(
                     icon: Icons.logout,
                     title: 'Log out',
                     isLogout: true,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Logged out successfully', style: TextStyle(fontFamily: 'Poppins'))),
-                      );
-
-                      // กลับไปหน้าแรกสุด
-                      Navigator.pushNamedAndRemoveUntil(
-                        context, 
-                        '/', 
-                        (route) => false, 
-                      );
-                    },
+                    onTap: _handleLogout, // 💡 เรียกใช้ฟังก์ชัน Logout
                   ),
                 ],
               ),
@@ -148,7 +204,7 @@ class StaffProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.grey.withValues(alpha: 0.08),
             spreadRadius: 1,
             blurRadius: 10,
             offset: const Offset(0, 4),
@@ -161,7 +217,7 @@ class StaffProfilePage extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isLogout
-                ? Colors.red.withOpacity(0.1)
+                ? Colors.red.withValues(alpha: 0.1)
                 : const Color.fromRGBO(172, 114, 161, 0.1),
             shape: BoxShape.circle,
           ),

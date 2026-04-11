@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 💡 เพิ่ม Import Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Import Firestore
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,6 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false; // 💡 เพิ่มตัวแปรสำหรับแสดงสถานะโหลด
 
   @override
   void dispose() {
@@ -21,7 +24,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  // 💡 อัปเดตฟังก์ชัน _handleLogin เพื่อเชื่อมต่อ Firebase
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -31,10 +35,67 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-    // For now, accept any credentials for prototype testing
-    Navigator.pushReplacementNamed(context, '/renter');
-  }
 
+    setState(() {
+      _isLoading = true; // เริ่มหมุนติ้วๆ
+    });
+
+    try {
+      // 1. ล็อกอินผ่าน Firebase Auth
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      String uid = userCredential.user!.uid;
+
+      // 2. ไปดึงข้อมูล Role จาก Firestore ตาราง users
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (userDoc.exists) {
+        // ดึงค่า role ออกมา (ถ้าไม่มีให้ตั้งค่าเริ่มต้นเป็น 'user')
+        String role = userDoc.get('role') ?? 'user';
+
+        if (mounted) {
+          // 3. เตะไปยังหน้าต่าง ๆ ตาม Role ที่กำหนดไว้ใน Database
+          if (role == 'staff') {
+            Navigator.pushReplacementNamed(context, '/staff');
+          } else if (role == 'owner') {
+            Navigator.pushReplacementNamed(context, '/owner');
+          } else {
+            // ค่า default คือ user/renter
+            Navigator.pushReplacementNamed(context, '/renter');
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User data not found in database.')),
+          );
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      // จัดการ Error กรณีรหัสผิดหรือไม่มีอีเมลในระบบ
+      String errorMessage = 'Login failed. Please try again.';
+      if (e.code == 'user-not-found' || e.code == 'invalid-email') {
+        errorMessage = 'No user found for that email.';
+      } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        errorMessage = 'Wrong password provided.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false; // หยุดโหลด
+        });
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
