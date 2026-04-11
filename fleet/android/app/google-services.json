@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "369631794564",
-    "project_id": "fleet-eed8c",
-    "storage_bucket": "fleet-eed8c.firebasestorage.app"
+    "project_number": "1038663547355",
+    "project_id": "fleet-ae5f8",
+    "storage_bucket": "fleet-ae5f8.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:369631794564:android:c1ed81fb96fad320f339d1",
+        "mobilesdk_app_id": "1:1038663547355:android:f38e7d3145eb1a89f88ffe",
         "android_client_info": {
           "package_name": "com.example.fleet"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDIqHbgAaMY3sQHCCTtTjmJHsbPpvRBHBc"
+          "current_key": "AIzaSyDFktsPgRWrKuSNXbjVJtuke240au66lnY"
         }
       ],
       "services": {

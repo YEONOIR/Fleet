@@ -41,48 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBHFjCnK0p7Vva26l_X1JhpGjYiAnxarbE',
-    appId: '1:369631794564:web:3263dd5791967e80f339d1',
-    messagingSenderId: '369631794564',
-    projectId: 'fleet-eed8c',
-    authDomain: 'fleet-eed8c.firebaseapp.com',
-    storageBucket: 'fleet-eed8c.firebasestorage.app',
-    measurementId: 'G-LZP6CS33Y3',
+    apiKey: 'AIzaSyDZshV-lmsp0TXh5lvb81zuJ0qxhB_shrI',
+    appId: '1:1038663547355:web:64703de4e3897323f88ffe',
+    messagingSenderId: '1038663547355',
+    projectId: 'fleet-ae5f8',
+    authDomain: 'fleet-ae5f8.firebaseapp.com',
+    storageBucket: 'fleet-ae5f8.firebasestorage.app',
+    measurementId: 'G-GYFXL6EGEV',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDIqHbgAaMY3sQHCCTtTjmJHsbPpvRBHBc',
-    appId: '1:369631794564:android:c1ed81fb96fad320f339d1',
-    messagingSenderId: '369631794564',
-    projectId: 'fleet-eed8c',
-    storageBucket: 'fleet-eed8c.firebasestorage.app',
+    apiKey: 'AIzaSyDFktsPgRWrKuSNXbjVJtuke240au66lnY',
+    appId: '1:1038663547355:android:f38e7d3145eb1a89f88ffe',
+    messagingSenderId: '1038663547355',
+    projectId: 'fleet-ae5f8',
+    storageBucket: 'fleet-ae5f8.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBgiEkEuHSjEG4ysoRNDX9qB1IoPp3u7ds',
-    appId: '1:369631794564:ios:c45437aaa145db21f339d1',
-    messagingSenderId: '369631794564',
-    projectId: 'fleet-eed8c',
-    storageBucket: 'fleet-eed8c.firebasestorage.app',
+    apiKey: 'AIzaSyCMQIMI7fg0wTdItCFAoFipgttpTZCZOGE',
+    appId: '1:1038663547355:ios:673535a2a6066cf5f88ffe',
+    messagingSenderId: '1038663547355',
+    projectId: 'fleet-ae5f8',
+    storageBucket: 'fleet-ae5f8.firebasestorage.app',
     iosBundleId: 'com.example.fleet',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBgiEkEuHSjEG4ysoRNDX9qB1IoPp3u7ds',
-    appId: '1:369631794564:ios:c45437aaa145db21f339d1',
-    messagingSenderId: '369631794564',
-    projectId: 'fleet-eed8c',
-    storageBucket: 'fleet-eed8c.firebasestorage.app',
+    apiKey: 'AIzaSyCMQIMI7fg0wTdItCFAoFipgttpTZCZOGE',
+    appId: '1:1038663547355:ios:673535a2a6066cf5f88ffe',
+    messagingSenderId: '1038663547355',
+    projectId: 'fleet-ae5f8',
+    storageBucket: 'fleet-ae5f8.firebasestorage.app',
     iosBundleId: 'com.example.fleet',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBHFjCnK0p7Vva26l_X1JhpGjYiAnxarbE',
-    appId: '1:369631794564:web:6886d719b89d425bf339d1',
-    messagingSenderId: '369631794564',
-    projectId: 'fleet-eed8c',
-    authDomain: 'fleet-eed8c.firebaseapp.com',
-    storageBucket: 'fleet-eed8c.firebasestorage.app',
-    measurementId: 'G-1QGXP58529',
+    apiKey: 'AIzaSyDZshV-lmsp0TXh5lvb81zuJ0qxhB_shrI',
+    appId: '1:1038663547355:web:85c0fe793efe6b3bf88ffe',
+    messagingSenderId: '1038663547355',
+    projectId: 'fleet-ae5f8',
+    authDomain: 'fleet-ae5f8.firebaseapp.com',
+    storageBucket: 'fleet-ae5f8.firebasestorage.app',
+    measurementId: 'G-1JDFQFWXPR',
   );
+
 }

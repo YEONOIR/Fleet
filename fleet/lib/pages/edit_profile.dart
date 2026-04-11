@@ -1,9 +1,10 @@
 import 'dart:io';
+import 'dart:convert'; // 💡 เพิ่มสำหรับแปลงข้อมูล JSON
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 💡 นำเข้า Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 นำเข้า Firestore
-import 'package:firebase_storage/firebase_storage.dart'; // 💡 นำเข้า Storage สำหรับอัปโหลดรูป
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http; // 💡 เพิ่มสำหรับส่งรูปไป ImgBB
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -13,28 +14,26 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _dobController = TextEditingController(); 
   final TextEditingController _addressController = TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
-  File? _profileImage; // เก็บรูปที่เลือกใหม่จากเครื่อง
-  String? _existingImageUrl; // เก็บ URL รูปเดิมที่ดึงมาจาก Database
+  File? _profileImage;
+  String? _existingImageUrl;
   
-  bool _isLoading = true; // สำหรับตอนดึงข้อมูลครั้งแรก
-  bool _isSaving = false; // สำหรับตอนกดปุ่ม Save
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // โหลดข้อมูลเมื่อเปิดหน้า
+    _loadUserData();
   }
 
-  // ==========================================
-  // 💡 1. ฟังก์ชันดึงข้อมูลผู้ใช้ปัจจุบันมาแสดง
-  // ==========================================
   Future<void> _loadUserData() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
@@ -44,14 +43,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
           
           setState(() {
-            // นำ First Name และ Last Name มาต่อกันเพื่อแสดงในช่องเดียว
-            _nameController.text = "${data['first_name'] ?? ''} ${data['last_name'] ?? ''}".trim();
+            _firstNameController.text = data['first_name'] ?? '';
+            _lastNameController.text = data['last_name'] ?? '';
             _emailController.text = data['email'] ?? user.email ?? '';
             _phoneController.text = data['phone'] ?? '';
             _addressController.text = data['address'] ?? '';
             _existingImageUrl = data['profile_image'] ?? '';
             
-            // แปลง Timestamp วันเกิดกลับเป็น String
             if (data['dob'] != null) {
               DateTime dobDate = (data['dob'] as Timestamp).toDate();
               _dobController.text = "${dobDate.day.toString().padLeft(2, '0')}/${dobDate.month.toString().padLeft(2, '0')}/${dobDate.year}";
@@ -67,8 +65,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   // ==========================================
-  // 💡 2. ฟังก์ชันอัปเดตข้อมูลลง Firebase
+  // 💡 ฟังก์ชันใหม่! อัปโหลดรูปลง ImgBB แทน Firebase
   // ==========================================
+  Future<String> _uploadImageToImgBB(File imageFile) async {
+    // ⚠️ เอา API Key จากเว็บ ImgBB มาใส่ในเครื่องหมายคำพูดด้านล่างนี้เลยครับ
+    const String apiKey = '0a99d5ebe05123a47328ece31b15711c'; 
+    
+    final uri = Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.bytesToString();
+      final jsonResult = json.decode(responseData);
+      // คืนค่า String URL ของรูปภาพกลับไป
+      return jsonResult['data']['url'];
+    } else {
+      throw Exception('Failed to upload image to ImgBB');
+    }
+  }
+
   Future<void> _saveProfile() async {
     FocusScope.of(context).unfocus();
     setState(() => _isSaving = true);
@@ -79,19 +96,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       String imageUrl = _existingImageUrl ?? '';
 
-      // ถ้ายูสเซอร์เลือกรูปใหม่ ให้ทำการอัปโหลดขึ้น Firebase Storage ก่อน
+      // 💡 ถ้ายูสเซอร์เลือกรูปใหม่ ให้เรียกใช้ฟังก์ชัน ImgBB
       if (_profileImage != null) {
-        final storageRef = FirebaseStorage.instance.ref().child('profile_images').child('${user.uid}.jpg');
-        await storageRef.putFile(_profileImage!);
-        imageUrl = await storageRef.getDownloadURL(); // เอา URL ที่ได้มาเก็บไว้
+        imageUrl = await _uploadImageToImgBB(_profileImage!);
       }
 
-      // แยก Full Name กลับเป็น First Name และ Last Name ก่อนเซฟ
-      List<String> names = _nameController.text.trim().split(' ');
-      String firstName = names.isNotEmpty ? names[0] : '';
-      String lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
-
-      // แปลง String วันเกิดกลับเป็น DateTime เพื่อสร้าง Timestamp
       Timestamp? dobTimestamp;
       if (_dobController.text.isNotEmpty) {
         List<String> parts = _dobController.text.split('/');
@@ -101,10 +110,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
       }
 
-      // อัปเดตข้อมูลกลับลง Firestore
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'first_name': firstName,
-        'last_name': lastName,
+        'first_name': _firstNameController.text.trim(),
+        'last_name': _lastNameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'address': _addressController.text.trim(),
         if (dobTimestamp != null) 'dob': dobTimestamp,
@@ -119,7 +127,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pop(context); // กลับไปหน้า Profile
+        Navigator.pop(context, true); // รีเฟรชหน้าโปรไฟล์
       }
     } catch (e) {
       if (mounted) {
@@ -170,7 +178,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _dobController.dispose(); 
@@ -249,7 +258,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       shape: BoxShape.circle,
                       color: Colors.grey[200],
                       border: Border.all(color: const Color.fromRGBO(172, 114, 161, 0.5), width: 3),
-                      // 💡 โลจิกเช็ครูปภาพใหม่
                       image: DecorationImage(
                         image: _profileImage != null 
                             ? FileImage(_profileImage!) as ImageProvider
@@ -286,9 +294,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  _buildTextField(label: 'Full Name', controller: _nameController, icon: Icons.person_outline),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          label: 'First Name', 
+                          controller: _firstNameController, 
+                          icon: Icons.person_outline
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          label: 'Last Name', 
+                          controller: _lastNameController, 
+                          icon: Icons.person_outline
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 20),
-                  // 💡 ทำให้ Email ไม่สามารถแก้ไขได้โดยตรง (Read Only) เพราะผูกกับ Auth Login
                   _buildTextField(label: 'Email Address', controller: _emailController, icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress, readOnly: true),
                   const SizedBox(height: 20),
                   _buildTextField(label: 'Phone Number', controller: _phoneController, icon: Icons.phone_outlined, keyboardType: TextInputType.phone),
@@ -307,7 +332,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         elevation: 2,
                       ),
-                      onPressed: _isSaving ? null : _saveProfile, // ปิดปุ่มตอนกำลังเซฟ
+                      onPressed: _isSaving ? null : _saveProfile,
                       child: _isSaving
                           ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : const Text(

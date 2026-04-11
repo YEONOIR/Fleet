@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 💡 เพิ่ม Import Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Import Firestore
+import 'package:firebase_auth/firebase_auth.dart'; 
+import '../main.dart'; // 💡 เพิ่มบรรทัดนี้ เพื่อเชื่อมกับด่านตรวจ RoleRouter ใน main.dart
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,7 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _isLoading = false; // 💡 เพิ่มตัวแปรสำหรับแสดงสถานะโหลด
+  bool _isLoading = false; 
 
   @override
   void dispose() {
@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // 💡 อัปเดตฟังก์ชัน _handleLogin เพื่อเชื่อมต่อ Firebase
+  // 💡 อัปเดตฟังก์ชัน _handleLogin ให้ส่งไปหา RoleRouter
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -42,37 +42,17 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // 1. ล็อกอินผ่าน Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      String uid = userCredential.user!.uid;
-
-      // 2. ไปดึงข้อมูล Role จาก Firestore ตาราง users
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-
-      if (userDoc.exists) {
-        // ดึงค่า role ออกมา (ถ้าไม่มีให้ตั้งค่าเริ่มต้นเป็น 'user')
-        String role = userDoc.get('role') ?? 'user';
-
-        if (mounted) {
-          // 3. เตะไปยังหน้าต่าง ๆ ตาม Role ที่กำหนดไว้ใน Database
-          if (role == 'staff') {
-            Navigator.pushReplacementNamed(context, '/staff');
-          } else if (role == 'owner') {
-            Navigator.pushReplacementNamed(context, '/owner');
-          } else {
-            // ค่า default คือ user/renter
-            Navigator.pushReplacementNamed(context, '/renter');
-          }
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User data not found in database.')),
-          );
-        }
+      // 💡 2. ล็อกอินสำเร็จปุ๊บ ไม่ต้องดึง Firestore เองแล้ว โยนให้ RoleRouter จัดการแยกหน้าให้เลย
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const RoleRouter()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       // จัดการ Error กรณีรหัสผิดหรือไม่มีอีเมลในระบบ
@@ -96,6 +76,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -244,7 +225,8 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               child: ElevatedButton(
-                onPressed: _handleLogin,
+                // 💡 ปิดปุ่มกดไม่ให้กดซ้ำตอนกำลังโหลด
+                onPressed: _isLoading ? null : _handleLogin, 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
@@ -252,15 +234,22 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text(
-                  'Login',
-                  style: TextStyle(
-                    fontFamily: "Poppins",
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isLoading
+                    // 💡 แสดงวงแหวนโหลดถ้ากำลัง Login
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Login',
+                        style: TextStyle(
+                          fontFamily: "Poppins",
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ),

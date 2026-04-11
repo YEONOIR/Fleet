@@ -174,13 +174,22 @@ class _RenterProfilePageState extends State<RenterProfilePage> {
                   _buildProfileMenu(
                     icon: Icons.edit_outlined,
                     title: 'Edit profile',
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async { // 💡 1. ใส่ async
+                      // 💡 2. ใช้ await รอรับค่าที่ส่งกลับมาจากหน้า Edit
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const EditProfilePage(),
                         ),
                       );
+
+                      // 💡 3. ถ้าค่าที่ส่งกลับมาเป็น true ให้ทำการดึงข้อมูลใหม่
+                      if (result == true) {
+                        setState(() {
+                          _isLoading = true; // โชว์วงแหวนโหลดแป๊บนึง
+                        });
+                        _fetchUserData(); // เรียกฟังก์ชันโหลดข้อมูลจาก Firebase ใหม่
+                      }
                     },
                   ),
 
