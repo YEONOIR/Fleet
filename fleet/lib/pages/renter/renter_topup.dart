@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 💡 สำหรับจำกัดการพิมพ์ให้ใส่ได้แค่ตัวเลข
+import 'package:firebase_auth/firebase_auth.dart'; // 💡 เชื่อม Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เชื่อม Firestore
 
 class RenterTopUpPage extends StatefulWidget {
   const RenterTopUpPage({super.key});
@@ -8,13 +11,17 @@ class RenterTopUpPage extends StatefulWidget {
 }
 
 class _RenterTopUpPageState extends State<RenterTopUpPage> {
-  int _currentCredit = 100;
-  int? _selectedAmount;
+  // 💡 ตัวแปรระบบ
+  double _currentCredit = 0.0;
+  String _userIdDisplay = "Loading...";
+  double? _selectedAmount;
   int? _selectedBankIndex;
+  bool _isLoading = true;
+  bool _isProcessing = false; // สำหรับตอนกด Confirm
 
-  final List<int> _amounts = [100, 200, 300, 400];
+  // 💡 Controller สำหรับช่องกรอกเงิน
+  final TextEditingController _amountController = TextEditingController();
 
-  // Bank data with logo images
   static const List<Map<String, dynamic>> _banks = [
     {'name': 'SCB', 'color': Color(0xFF4E2A84), 'image': 'assets/images/bank_scb.jpg'},
     {'name': 'KBank', 'color': Color(0xFF138D3B), 'image': 'assets/images/bank_kbank.jpg'},
@@ -24,63 +31,146 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+    
+    // 💡 ดักจับเวลาพิมพ์ตัวเลข เพื่อให้ระบบคำนวณยอดเงินรวมแบบ Real-time
+    _amountController.addListener(() {
+      setState(() {
+        _selectedAmount = double.tryParse(_amountController.text);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  // ==========================================
+  // 💡 ฟังก์ชันดึงข้อมูลผู้ใช้จาก Firebase
+  // ==========================================
+  Future<void> _fetchUserData() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          if (mounted) {
+            setState(() {
+              _currentCredit = (doc['wallet_balance'] ?? 0).toDouble();
+              // เอา ID 8 ตัวแรกมาโชว์ให้ดูเท่ๆ
+              _userIdDisplay = user.uid.substring(0, 8).toUpperCase(); 
+              _isLoading = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print("Error loading user data: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ==========================================
+  // 💡 ฟังก์ชันเติมเงินเข้า Firebase
+  // ==========================================
+  Future<void> _handleTopUp() async {
+    if (_selectedAmount == null || _selectedAmount! <= 0 || _selectedBankIndex == null) return;
+
+    FocusScope.of(context).unfocus(); // ซ่อนคีย์บอร์ด
+    setState(() => _isProcessing = true);
+
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final bankName = _banks[_selectedBankIndex!]['name'];
+
+        // 1. อัปเดตยอดเงินในตาราง users (ใช้ FieldValue.increment เพื่อบวกเลขเพิ่ม)
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'wallet_balance': FieldValue.increment(_selectedAmount!),
+        });
+
+        // 2. (Optional) บันทึกประวัติการทำรายการลงตาราง transactions
+        await FirebaseFirestore.instance.collection('transactions').add({
+          'user_id': user.uid,
+          'type': 'topup',
+          'amount': _selectedAmount,
+          'bank': bankName,
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'success',
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Top up ฿$_selectedAmount successful via $bankName!', style: const TextStyle(fontFamily: 'Poppins')),
+              backgroundColor: const Color(0xFF2E7D6E),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          
+          // รีเซ็ตหน้าจอและดึงข้อมูลใหม่
+          _amountController.clear();
+          setState(() {
+            _selectedBankIndex = null;
+          });
+          await _fetchUserData(); 
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FA), // สีพื้นหลังสว่างๆ แบบ Modern
       body: Column(
         children: [
-          // ── Header ──
           _buildHeader(context),
-
-          // ── Content ──
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top-up Credit + Your Credit badge
-                  _buildCreditInfoRow(),
-                  const SizedBox(height: 28),
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFAC72A1)))
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildModernCreditCard(),
+                        const SizedBox(height: 30),
 
-                  // Select amount
-                  const Text(
-                    'select top - amount',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF070E2A),
+                        const Text(
+                          'Enter top-up amount',
+                          style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF070E2A)),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildAmountInput(), // 💡 เปลี่ยนเป็น Input Field
+                        const SizedBox(height: 24),
+
+                        _buildBalancePreview(),
+                        const SizedBox(height: 30),
+
+                        const Text(
+                          'Select payment method',
+                          style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF070E2A)),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPaymentGrid(),
+                        const SizedBox(height: 40),
+
+                        _buildConfirmButton(),
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  _buildAmountSelector(),
-                  const SizedBox(height: 24),
-
-                  // Balance after top-up
-                  _buildBalancePreview(),
-                  const SizedBox(height: 28),
-
-                  // Payment method
-                  const Text(
-                    'Select your payment method',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF070E2A),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPaymentGrid(),
-                  const SizedBox(height: 30),
-
-                  // Confirm button
-                  _buildConfirmButton(),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -91,189 +181,101 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8,
-        bottom: 16,
-        left: 8,
-        right: 8,
-      ),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 8, bottom: 16, left: 8, right: 8),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFAC72A1),
-            Color(0xFF070E2A),
-          ],
-        ),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFAC72A1), Color(0xFF070E2A)]),
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-          ),
+          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20)),
           const Expanded(
-            child: Text(
-              'Top - up',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
+            child: Text('Top-up Wallet', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           ),
-          const SizedBox(width: 48), // Balance the back button
+          const SizedBox(width: 48), 
         ],
       ),
     );
   }
 
-  // ─────────── Credit Info Row ───────────
-  Widget _buildCreditInfoRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Left side: Top-up Credit + ID
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Top - up Credit',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF070E2A),
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'your ID : **********',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF666666),
-              ),
-            ),
-          ],
-        ),
-        // Right side: Your credit badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3E5F5),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFCE93D8),
-              width: 1.5,
-            ),
-          ),
-          child: Column(
+  // ─────────── Modern Credit Card ───────────
+  Widget _buildModernCreditCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'your credit',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF070E2A),
-                ),
-              ),
+              const Text('Current Balance', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 4),
               Text(
-                '$_currentCredit',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF070E2A),
-                ),
+                '฿${_currentCredit.toStringAsFixed(2)}',
+                style: const TextStyle(fontFamily: 'Poppins', fontSize: 26, fontWeight: FontWeight.w700, color: Color(0xFF070E2A)),
               ),
             ],
           ),
-        ),
-      ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: const Color(0xFFF3E5F5), borderRadius: BorderRadius.circular(20)),
+            child: Text('ID: $_userIdDisplay', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFAC72A1))),
+          ),
+        ],
+      ),
     );
   }
 
-  // ─────────── Amount Selector ───────────
-  Widget _buildAmountSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: _amounts.map((amount) {
-        final isSelected = _selectedAmount == amount;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedAmount = isSelected ? null : amount;
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 70,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF070E2A) : const Color(0xFFF3E5F5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? const Color(0xFF070E2A) : const Color(0xFFCE93D8),
-                width: 1.5,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                '$amount',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF070E2A),
-                ),
-              ),
-            ),
+  // ─────────── Amount Input Field ───────────
+  Widget _buildAmountInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2))],
+      ),
+      child: TextField(
+        controller: _amountController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true), // ใส่ได้แค่ตัวเลข
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))], // ให้ใส่ทศนิยมได้ 2 ตำแหน่ง
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontFamily: 'Poppins', fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF070E2A)),
+        decoration: InputDecoration(
+          hintText: '0.00',
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.only(left: 20, top: 4),
+            child: Text('฿', style: TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFAC72A1))),
           ),
-        );
-      }).toList(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 20),
+        ),
+      ),
     );
   }
 
   // ─────────── Balance Preview ───────────
   Widget _buildBalancePreview() {
-    final balanceAfter = _selectedAmount != null
-        ? _currentCredit + _selectedAmount!
-        : null;
+    final balanceAfter = _selectedAmount != null && _selectedAmount! > 0 
+        ? _currentCredit + _selectedAmount! 
+        : _currentCredit;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3E5F5),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(color: const Color(0xFFF3E5F5).withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Balance after top - up',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF070E2A),
-            ),
-          ),
+          const Text('Total after top-up', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF070E2A))),
           Text(
-            balanceAfter != null ? '$balanceAfter' : '-',
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF070E2A),
-            ),
+            '฿${balanceAfter.toStringAsFixed(2)}',
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFFAC72A1)),
           ),
         ],
       ),
@@ -285,72 +287,27 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-        childAspectRatio: 0.85,
-      ),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 0.9),
       itemCount: _banks.length,
       itemBuilder: (context, index) {
         final bank = _banks[index];
         final isSelected = _selectedBankIndex == index;
         return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedBankIndex = isSelected ? null : index;
-            });
-          },
+          onTap: () => setState(() => _selectedBankIndex = isSelected ? null : index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isSelected ? (bank['color'] as Color) : Colors.transparent, width: 2),
+              boxShadow: [BoxShadow(color: isSelected ? (bank['color'] as Color).withOpacity(0.3) : Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+            ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? (bank['color'] as Color).withValues(alpha: 0.15)
-                        : Colors.white,
-                    border: Border.all(
-                      color: isSelected
-                          ? (bank['color'] as Color)
-                          : const Color(0xFFCE93D8).withValues(alpha: 0.5),
-                      width: isSelected ? 3 : 2,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: (bank['color'] as Color).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: ClipOval(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Image.asset(
-                        bank['image'] as String,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ),
+                ClipOval(child: Image.asset(bank['image'] as String, width: 40, height: 40, fit: BoxFit.cover)),
                 const SizedBox(height: 8),
-                Text(
-                  bank['name'] as String,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? bank['color'] as Color
-                        : const Color(0xFF070E2A),
-                  ),
-                ),
+                Text(bank['name'] as String, style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: const Color(0xFF070E2A))),
               ],
             ),
           ),
@@ -361,58 +318,22 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
 
   // ─────────── Confirm Button ───────────
   Widget _buildConfirmButton() {
+    bool isReady = _selectedAmount != null && _selectedAmount! > 0 && _selectedBankIndex != null;
+
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 55,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFFAC72A1),
-              Color(0xFF070E2A),
-            ],
-          ),
+          borderRadius: BorderRadius.circular(16),
+          gradient: isReady ? const LinearGradient(colors: [Color(0xFFAC72A1), Color(0xFF070E2A)]) : LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade400]),
         ),
         child: ElevatedButton(
-          onPressed: (_selectedAmount != null && _selectedBankIndex != null)
-              ? () {
-                  final bankName = _banks[_selectedBankIndex!]['name'];
-                  setState(() {
-                    _currentCredit += _selectedAmount!;
-                    _selectedAmount = null;
-                    _selectedBankIndex = null;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Top up successful via $bankName! New balance: $_currentCredit',
-                        style: const TextStyle(fontFamily: 'Poppins'),
-                      ),
-                      backgroundColor: const Color(0xFF4A1942),
-                    ),
-                  );
-                }
-              : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            disabledBackgroundColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-          ),
-          child: Text(
-            'Confirm Top Up',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
-              color: (_selectedAmount != null && _selectedBankIndex != null)
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.5),
-            ),
-          ),
+          onPressed: isReady && !_isProcessing ? _handleTopUp : null,
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          child: _isProcessing
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text('Confirm Top Up', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
         ),
       ),
     );

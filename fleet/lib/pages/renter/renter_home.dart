@@ -197,7 +197,7 @@ class _RenterHomePageState extends State<RenterHomePage> {
     );
   }
 
- // ─────────── Credit & Top Up Row (Fixed Height) ───────────
+ // ─────────── Credit & Top Up Row (Fixed Height & Auto Refresh) ───────────
   Widget _buildCreditTopUpRow(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -206,7 +206,7 @@ class _RenterHomePageState extends State<RenterHomePage> {
           // ── 1. Credit Card ──
           Expanded(
             child: Container(
-              height: 85, // 💡 บังคับความสูงให้เท่ากัน
+              height: 85, 
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -237,7 +237,7 @@ class _RenterHomePageState extends State<RenterHomePage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center, // 💡 จัดเนื้อหาให้อยู่กึ่งกลางแนวตั้ง
+                      mainAxisAlignment: MainAxisAlignment.center, 
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
@@ -271,11 +271,21 @@ class _RenterHomePageState extends State<RenterHomePage> {
           // ── 2. Top Up Button ──
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/renter/topup');
+              // 💡 แก้ไขตรงนี้: ใส่ async / await เพื่อให้มันรอ และดึงข้อมูลใหม่เมื่อกลับมา
+              onTap: () async {
+                // รอจนกว่าหน้า Top-up จะถูกปิด
+                await Navigator.pushNamed(context, '/renter/topup');
+                
+                // พอกลับมาปุ๊บ สั่งให้โชว์สถานะโหลด และดึงข้อมูลใหม่ทันที
+                if (mounted) {
+                  setState(() {
+                    _isLoadingUser = true;
+                  });
+                  _fetchUserData(); 
+                }
               },
               child: Container(
-                height: 85, // 💡 บังคับความสูงให้เท่ากับฝั่งซ้าย
+                height: 85, 
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,

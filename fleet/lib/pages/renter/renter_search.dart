@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 1. Import Firestore
+
 import '../../components/vehicle_info_card.dart';
-import '../../components/search_header.dart'; // Import component ใหม่
-import '../../components/search_calendar.dart'; // Import component ใหม่
+import '../../components/search_header.dart'; 
+import '../../components/search_calendar.dart'; 
 import 'vehicle_rent_detail.dart';
 import '../../components/time_selector.dart';
 
@@ -14,6 +16,11 @@ class RenterSearchPage extends StatefulWidget {
 
 class _RenterSearchPageState extends State<RenterSearchPage>
     with SingleTickerProviderStateMixin {
+  
+  // ── 💡 เพิ่ม State สำหรับโหลดข้อมูล ──
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _allVehicles = [];
+
   // ── Search state ──
   bool _isSearchExpanded = false;
   final TextEditingController _searchController = TextEditingController();
@@ -26,110 +33,16 @@ class _RenterSearchPageState extends State<RenterSearchPage>
   bool _isCalendarOpen = false;
   DateTime? _startDate;
   DateTime? _endDate;
-  DateTime _calendarMonth = DateTime(2022, 1, 1);
+  DateTime _calendarMonth = DateTime.now(); // 💡 อัปเดตให้เป็นเดือนปัจจุบัน
 
-TimeOfDay? _startTime;
+  TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+
   // ── Vehicle type options ──
   static const List<Map<String, dynamic>> _vehicleTypes = [
     {'label': 'Car', 'icon': Icons.directions_car, 'type': 'Car'},
     {'label': 'Motorcycle', 'icon': Icons.two_wheeler, 'type': 'Motorcycle'},
     {'label': 'Van', 'icon': Icons.airport_shuttle, 'type': 'Van'},
-  ];
-
-  // ── Mock vehicles with availability periods ──
-  static final List<Map<String, dynamic>> _allVehicles = [
-    {
-      'name': "Sukrit's Honda",
-      'rating': '4.5', // แก้จาก 4.5 เป็น '4.5'
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'vType': '4 Door Car',
-      'vehicleType': 'Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
-      'availableFrom': DateTime(2022, 1, 5),
-      'availableTo': DateTime(2022, 1, 20),
-    },
-    {
-      'name': "Pimthida's Bike",
-      'rating': '4.5', // แก้จาก 4.5 เป็น '4.5'
-      'plate': 'BB 567',
-      'model': 'GRAND FILANO HYBRID',
-      'vType': 'Motorcycle',
-      'vehicleType': 'Motorcycle',
-      'address': '222 JJ Village, Loo Road, Llama, Penguin, Bangkok 10120',
-      'price': 300,
-      'image': 'assets/images/bike.jpg',
-      'availableFrom': DateTime(2022, 1, 8),
-      'availableTo': DateTime(2022, 1, 25),
-    },
-    {
-      'name': "Aran's Toyota",
-      'rating': '4.3', // แก้จาก 4.3 เป็น '4.3'
-      'plate': 'CC 8901',
-      'model': 'Camry 2.5 HEV',
-      'vType': '4 Door Car',
-      'vehicleType': 'Car',
-      'address': '333 Siam Square, Pathum Wan, Bangkok 10330',
-      'price': 300,
-      'image': 'assets/images/car.jpg',
-      'availableFrom': DateTime(2022, 1, 1),
-      'availableTo': DateTime(2022, 1, 15),
-    },
-    {
-      'name': "Nari's Mazda",
-      'rating': '4.0', // แก้จาก 4.0 เป็น '4.0'
-      'plate': 'DD 2345',
-      'model': 'Mazda 3 Hatchback',
-      'vType': 'Hatchback',
-      'vehicleType': 'Car',
-      'address': '444 Sukhumvit Rd, Khlong Toei, Bangkok 10110',
-      'price': 220,
-      'image': 'assets/images/car.jpg',
-      'availableFrom': DateTime(2022, 1, 12),
-      'availableTo': DateTime(2022, 2, 5),
-    },
-    {
-      'name': "Krit's BMW",
-      'rating': '4.8', // แก้จาก 4.8 เป็น '4.8'
-      'plate': 'EE 6789',
-      'model': 'X3 xDrive30e',
-      'vType': 'SUV',
-      'vehicleType': 'Car',
-      'address': '555 Silom Rd, Bang Rak, Bangkok 10500',
-      'price': 450,
-      'image': 'assets/images/car.jpg',
-      'availableFrom': DateTime(2022, 1, 3),
-      'availableTo': DateTime(2022, 1, 30),
-    },
-    {
-      'name': "Somchai's Van",
-      'rating': '4.2', // แก้จาก 4.2 เป็น '4.2'
-      'plate': 'FF 3456',
-      'model': 'Commuter HiAce',
-      'vType': 'Van',
-      'vehicleType': 'Van',
-      'address': '666 Ratchadaphisek Rd, Bangkok 10310',
-      'price': 500,
-      'image': 'assets/images/car2.jpg',
-      'availableFrom': DateTime(2022, 1, 1),
-      'availableTo': DateTime(2022, 1, 28),
-    },
-    {
-      'name': "Dao's Bike",
-      'rating': '4.6', // แก้จาก 4.6 เป็น '4.6'
-      'plate': 'GG 7890',
-      'model': 'PCX 160',
-      'vType': 'Motorcycle',
-      'vehicleType': 'Motorcycle',
-      'address': '777 Rama 9 Rd, Bangkok 10320',
-      'price': 150,
-      'image': 'assets/images/bike.jpg',
-      'availableFrom': DateTime(2022, 1, 10),
-      'availableTo': DateTime(2022, 2, 10),
-    },
   ];
 
   @override
@@ -140,8 +53,69 @@ TimeOfDay? _startTime;
         setState(() => _isSearchExpanded = false);
       }
     });
+
+    // 💡 2. เรียกใช้ฟังก์ชันดึงข้อมูลรถเมื่อเปิดหน้า
+    _fetchVehiclesFromFirebase();
   }
 
+  // ==========================================
+  // 💡 3. ฟังก์ชันดึงข้อมูลรถ (อัปเดตให้ตรงกับ Database ของคุณ)
+  // ==========================================
+  Future<void> _fetchVehiclesFromFirebase() async {
+    try {
+      // ค้นหารถเฉพาะคันที่ว่าง (ต้องไปเพิ่ม status: "available" ใน Firebase ด้วยนะ)
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .where('status', isEqualTo: 'available') 
+          .get();
+
+      List<Map<String, dynamic>> fetchedCars = [];
+      for (var doc in snapshot.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+        
+        fetchedCars.add({
+          'id': doc.id, 
+          'name': data['brand'] != null ? "${data['brand']} ${data['model']}" : "Unknown Vehicle",
+          'rating': '0.0', 
+          'plate': data['license_plate'] ?? '-', 
+          'model': data['model'] ?? '-',
+          'vType': data['vehicle_type'] ?? 'Car',
+          'vehicleType': data['vehicle_type'] ?? 'Car', 
+          
+          // 💡 แก้ไขชื่อ Field ให้ตรงกับใน Firebase ของคุณ
+          'address': data['address'] ?? 'No address provided', 
+          'price': data['price_per_day'] ?? 0, 
+          
+          // 💡 แก้ไขให้ดึงจากคำว่า 'images' ตามฐานข้อมูลคุณ
+          'image': (data['images'] != null && (data['images'] as List).isNotEmpty)
+              ? data['images'][0] 
+              : 'assets/images/car.jpg', 
+          
+          'availableFrom': DateTime.now().subtract(const Duration(days: 30)),
+          'availableTo': DateTime.now().add(const Duration(days: 365)),
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _allVehicles = fetchedCars;
+        });
+      }
+    } catch (e) {
+      print("Error loading vehicles: $e");
+      if (mounted) {
+        setState(() {
+          _allVehicles = [];
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
   @override
   void dispose() {
     _searchController.dispose();
@@ -215,7 +189,6 @@ TimeOfDay? _startTime;
             onCalendarTap: () => setState(() => _isCalendarOpen = !_isCalendarOpen),
           ),
 
-          // ── Calendar Component ──
           // ── Calendar & Time Component ──
           if (_isCalendarOpen)
             Column(
@@ -227,74 +200,76 @@ TimeOfDay? _startTime;
                   onDateTap: _onDateTap,
                   onMonthChanged: (newMonth) => setState(() => _calendarMonth = newMonth),
                 ),
-                // 💡 แทรก TimeSelector ต่อท้ายเข้าไป
                 TimeSelector(
                   startTime: _startTime,
                   endTime: _endTime,
                   onStartTimeSelected: (time) => setState(() => _startTime = time),
                   onEndTimeSelected: (time) => setState(() => _endTime = time),
                 ),
-                const SizedBox(height: 10), // เพิ่มระยะห่างนิดหน่อย
+                const SizedBox(height: 10), 
               ],
             ),
+            
           // ── Content ──
           Expanded(
-            child: filtered.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                    itemCount: filtered.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 16, bottom: 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Highlight', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF070E2A))),
-                              if (_selectedVehicleType != null || _startDate != null)
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedVehicleType = null;
-                                      _startDate = null;
-                                      _endDate = null;
-                                      _startTime = null; // 💡 เคลียร์ Time
-                                      _endTime = null;   // 💡 เคลียร์ Time
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(color: const Color(0xFFF3E5F5), borderRadius: BorderRadius.circular(12)),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.clear, size: 14, color: Color(0xFF7B1FA2)),
-                                        SizedBox(width: 4),
-                                        Text('Clear filters', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF7B1FA2))),
-                                      ],
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFAC72A1)))
+                : filtered.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                        itemCount: filtered.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 16, bottom: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Highlight', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF070E2A))),
+                                  if (_selectedVehicleType != null || _startDate != null)
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedVehicleType = null;
+                                          _startDate = null;
+                                          _endDate = null;
+                                          _startTime = null; 
+                                          _endTime = null;  
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(color: const Color(0xFFF3E5F5), borderRadius: BorderRadius.circular(12)),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.clear, size: 14, color: Color(0xFF7B1FA2)),
+                                            SizedBox(width: 4),
+                                            Text('Clear filters', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF7B1FA2))),
+                                          ],
+                                        ),
+                                      ),
                                     ),
+                                ],
+                              ),
+                            );
+                          }
+                          return VehicleInfoCard(
+                            data: filtered[index - 1],
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VehicleRentDetailPage(
+                                    vehicleData: filtered[index - 1],
                                   ),
                                 ),
-                            ],
-                          ),
-                        );
-                      }
-                    return VehicleInfoCard(
-                        data: filtered[index - 1],
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VehicleRentDetailPage(
-                                vehicleData: filtered[index - 1],
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
           ),
         ],
       ),
@@ -307,11 +282,11 @@ TimeOfDay? _startTime;
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+          Icon(Icons.search_off, size: 64, color: Colors.grey.withOpacity(0.3)),
           const SizedBox(height: 12),
-          Text('No vehicles found', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.withValues(alpha: 0.6))),
+          Text('No vehicles found', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.withOpacity(0.6))),
           const SizedBox(height: 6),
-          Text('Try adjusting your filters or dates', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey.withValues(alpha: 0.5))),
+          Text('Try adjusting your filters or dates', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey.withOpacity(0.5))),
         ],
       ),
     );

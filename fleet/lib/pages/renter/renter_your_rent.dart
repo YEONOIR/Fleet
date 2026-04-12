@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../components/history_card.dart'; // ใส่ path ให้ตรงกับโฟลเดอร์ของคุณ
-import 'rent_history.dart'; // ใส่ path ให้ตรงกับโฟลเดอร์ของคุณ
+import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+
+import '../../components/history_card.dart'; 
+import 'rent_history.dart'; 
 
 class RenterYourRentPage extends StatefulWidget {
-  // 💡 1. เพิ่มตัวแปรรับค่า initialIndex และกำหนดค่าเริ่มต้นเป็น 0 (แท็บ Accept)
   final int initialIndex;
   
   const RenterYourRentPage({super.key, this.initialIndex = 0});
@@ -15,8 +17,8 @@ class RenterYourRentPage extends StatefulWidget {
 class _RenterYourRentPageState extends State<RenterYourRentPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true; // 💡 เพิ่มสถานะกำลังโหลด
 
-  // ── Tab definitions ──
   static const List<String> _tabLabels = [
     'Accept',
     'Using',
@@ -25,152 +27,122 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     'Pending',
   ];
 
-  // 💡 อัปเดตสีแท็บ
   static const List<Color> _tabColors = [
-    Color(0xFF2E7D6E), // Accept – กลับมาใช้สีเดิม
-    Color.fromRGBO(172, 114, 161, 1.0), // Using 
-    Color(0xFF31A1D1), // Complete 
-    Color(0xFFC62828), // Cancel 
-    Color(0xFFE6A817), // Pending 
+    Color(0xFF2E7D6E), 
+    Color.fromRGBO(172, 114, 161, 1.0),  
+    Color(0xFF31A1D1), 
+    Color(0xFFC62828), 
+    Color(0xFFE6A817),  
   ];
 
-  // 💡 อัปเดตสีขอบและเงาของการ์ด
   static const List<List<Color>> _cardBorderGradients = [
-    [Color(0xFF2E7D6E), Color(0xFF80CBC4)], // Accept (กลับมาใช้คู่สีเดิม)
-    [Color.fromRGBO(172, 114, 161, 1.0), Color(0xFFE1BEE7)], // Using
-    [Color(0xFF31A1D1), Color(0xFFB3E5FC)], // Complete
-    [Color(0xFFC62828), Color(0xFFEF9A9A)], // Cancel
-    [Color(0xFFE6A817), Color(0xFFFFF176)], // Pending
+    [Color(0xFF2E7D6E), Color(0xFF80CBC4)], 
+    [Color.fromRGBO(172, 114, 161, 1.0), Color(0xFFE1BEE7)], 
+    [Color(0xFF31A1D1), Color(0xFFB3E5FC)], 
+    [Color(0xFFC62828), Color(0xFFEF9A9A)], 
+    [Color(0xFFE6A817), Color(0xFFFFF176)], 
   ];
-
-  // ── Mock rent data ──
-  static const List<Map<String, dynamic>> _rentData = [
-    // ... ข้อมูลเดิมของคุณ ...
-    // ── Accept (index 0) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg', // อย่าลืมใส่รูปจริงใน assets
-      'status': 0,
-      'fuel': 'EV',
-      'deposit': 1000,
-      'owner': {'name': 'Sukrit', 'phone': '081-234-5678', 'rating': 4.8},
-      'booking': {'startDate': '10 Apr 2026', 'endDate': '12 Apr 2026', 'startTime': '10:00', 'endTime': '10:00', 'totalPrice': 12000},
-      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'],
-    },
-
-    // ── Using (index 1) ──
-    {
-      'name': "Aran's Toyota",
-      'rating': 4.3,
-      'plate': 'CC 8901',
-      'model': 'Camry 2.5 HEV',
-      'type': '4 Door Car',
-      'address': '333 Siam Square, Pathum Wan, Bangkok 10330',
-      'price': 300,
-      'image': 'assets/images/car.jpg',
-      'status': 1,
-      'fuel': 'Gasohol 95',
-      'deposit': 1500,
-      'owner': {'name': 'Aran', 'phone': '089-876-5432', 'rating': 4.2},
-      'booking': {'startDate': '08 Apr 2026', 'endDate': '09 Apr 2026', 'startTime': '09:00', 'endTime': '18:00', 'totalPrice': 2700},
-      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg', 'assets/images/car.jpg'],
-    },
-
-    // ── Complete (index 2) ──
-    {
-      'name': "Nari's Mazda",
-      'rating': 4.0,
-      'plate': 'DD 2345',
-      'model': 'Mazda 3 Hatchback',
-      'type': 'Hatchback',
-      'address': '444 Sukhumvit Rd, Khlong Toei, Bangkok 10110',
-      'price': 220,
-      'image': 'assets/images/car.jpg',
-      'status': 2,
-      'fuel': 'Diesel',
-      'deposit': 1000,
-      'owner': {'name': 'Nari', 'phone': '082-333-4444', 'rating': 4.5},
-      'booking': {'startDate': '01 Apr 2026', 'endDate': '03 Apr 2026', 'startTime': '12:00', 'endTime': '12:00', 'totalPrice': 10560},
-      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'],
-      'defect': 'พบรอยขีดข่วนเล็กน้อยที่กันชนหน้าซ้าย นอกนั้นปกติครับ', 
-    },
-
-    // ── Cancel (index 3) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
-      'status': 3,
-      'fuel': 'EV',
-      'deposit': 1000,
-      'owner': {'name': 'Sukrit', 'phone': '081-234-5678', 'rating': 4.8},
-      'booking': {'startDate': '15 Apr 2026', 'endDate': '16 Apr 2026', 'startTime': '08:00', 'endTime': '20:00', 'totalPrice': 3000},
-      'beforeRentImages': [],
-    },
-
-    // ── Pending (index 4) ──
-    {
-      'name': "Krit's BMW",
-      'rating': 4.8,
-      'plate': 'EE 6789',
-      'model': 'X3 xDrive30e',
-      'type': 'SUV',
-      'address': '555 Silom Rd, Bang Rak, Bangkok 10500',
-      'price': 450,
-      'image': 'assets/images/car.jpg',
-      'status': 4,
-      'fuel': 'PHEV',
-      'deposit': 3000,
-      'owner': {'name': 'Krit', 'phone': '085-555-6666', 'rating': 4.9},
-      'booking': {'startDate': '20 Apr 2026', 'endDate': '22 Apr 2026', 'startTime': '10:00', 'endTime': '10:00', 'totalPrice': 21600},
-      'beforeRentImages': [],
-      // 💡 เพิ่ม pendingType: 'rent' สำหรับรายการที่รอการยืนยันเช่า
-      'pendingType': 'rent', 
-    },
-    {
-      'name': "Sompong's MG",
-      'rating': 4.2,
-      'plate': 'กท 9999',
-      'model': 'MG ZS EV',
-      'type': 'SUV',
-      'address': '123 Sukhumvit Rd, Bangkok 10110',
-      'price': 350,
-      'image': 'assets/images/car.jpg',
-      'status': 4, // อยู่ในแท็บ Pending เหมือนกัน
-      'fuel': 'EV',
-      'deposit': 2000,
-      'owner': {'name': 'Sompong', 'phone': '081-111-2222', 'rating': 4.3},
-      'booking': {'startDate': '05 Apr 2026', 'endDate': '07 Apr 2026', 'startTime': '09:00', 'endTime': '18:00', 'totalPrice': 5000},
-      // 💡 เพิ่มรูป beforeRentImages มาด้วย เพราะแบบรอคืนต้องโชว์เหมือนหน้า Using
-      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'], 
-      // 💡 เพิ่ม pendingType: 'return' สำหรับรายการที่เพิ่งกดคืนรถไป
-      'pendingType': 'return', 
-    },
-  ];
+  
+  // 💡 ลบข้อมูลจำลองทิ้งให้หมด แล้วเปลี่ยนเป็นลิสต์ว่างๆ (กล่องเปล่า) 
+  List<Map<String, dynamic>> _rentData = [];
 
   @override
   void initState() {
     super.initState();
-    // 💡 2. เอา initialIndex มาตั้งเป็นค่าเริ่มต้นของ TabController
     _tabController = TabController(
       length: 5, 
       vsync: this,
-      initialIndex: widget.initialIndex, // ดึงค่าจากตัวแปรด้านบนมาใช้
+      initialIndex: widget.initialIndex, 
     );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
+
+    // 💡 เริ่มโหลดข้อมูลจาก Firebase เมื่อเปิดหน้า
+    _fetchRentHistoryFromFirebase();
+  }
+
+  // ==========================================
+  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (แบบจริง)
+  // ==========================================
+  Future<void> _fetchRentHistoryFromFirebase() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // ไปค้นหาข้อมูลในตาราง bookings
+      QuerySnapshot snap = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('renter_id', isEqualTo: user.uid)
+          .get();
+
+      if (snap.docs.isNotEmpty) {
+        List<Map<String, dynamic>> realData = [];
+        
+        for (var doc in snap.docs) {
+          var data = doc.data() as Map<String, dynamic>;
+          
+          realData.add({
+            'id': doc.id,
+            'name': data['vehicle_name'] ?? 'Unknown Vehicle', 
+            'rating': 0.0, 
+            'plate': data['license_plate'] ?? '-',
+            'model': data['vehicle_model'] ?? '-',
+            'type': data['vehicle_type'] ?? 'Car',
+            'address': data['location'] ?? 'No address provided',
+            'price': data['total_price'] ?? 0,
+            'image': data['image_url'] ?? 'assets/images/car.jpg', 
+            'status': data['status'] ?? 4, 
+            'fuel': data['fuel'] ?? '-',
+            'deposit': data['deposit_paid'] ?? 0,
+            'owner': {
+              'name': data['owner_name'] ?? 'Owner', 
+              'phone': data['owner_phone'] ?? '-', 
+              'rating': 0.0
+            },
+            'booking': {
+              'startDate': data['start_date'] ?? 'N/A',
+              'endDate': data['end_date'] ?? 'N/A',
+              'startTime': data['start_time'] ?? 'N/A',
+              'endTime': data['end_time'] ?? 'N/A',
+              'totalPrice': data['total_price'] ?? 0,
+            },
+            'beforeRentImages': data['before_images'] ?? [],
+            'afterRentImages': data['after_images'] ?? [],
+            'pendingType': data['pending_type'] ?? 'rent',
+            'defect': data['defect'] ?? '',
+          });
+        }
+
+        if (mounted) {
+          setState(() {
+            _rentData = realData;
+          });
+        }
+      } else {
+        // 💡 ถ้าไม่เจอข้อมูล ให้ล้างข้อมูลเป็นลิสต์ว่าง เพื่อให้โชว์หน้า No rentals
+        if (mounted) {
+          setState(() {
+            _rentData = [];
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching bookings: $e");
+      if (mounted) {
+        setState(() {
+          _rentData = [];
+        });
+      }
+    } finally {
+      // 💡 หยุดหมุนวงแหวน ไม่ว่าจะดึงข้อมูลสำเร็จ หรือพัง หรือว่างเปล่า
+      if (mounted) {
+        setState(() => _isLoading = false); 
+      }
+    }
   }
 
   @override
@@ -192,12 +164,14 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           _buildHeader(context),
           _buildTabBar(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: List.generate(5, (tabIndex) {
-                return _buildTabContent(tabIndex);
-              }),
-            ),
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFAC72A1)))
+                : TabBarView(
+                    controller: _tabController,
+                    children: List.generate(5, (tabIndex) {
+                      return _buildTabContent(tabIndex);
+                    }),
+                  ),
           ),
         ],
       ),
@@ -225,16 +199,26 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           bottomRight: Radius.circular(24),
         ),
       ),
-      child: const Center(
-        child: Text(
-          'Your rent',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
+          const Expanded(
+            child: Text(
+              'Your rent',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48), 
+        ],
       ),
     );
   }
@@ -244,10 +228,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFEEEEEE),
-            width: 1,
-          ),
+          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
         ),
       ),
       child: TabBar(
@@ -256,16 +237,8 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
         labelPadding: EdgeInsets.zero,
         indicatorColor: _tabColors[_tabController.index],
         indicatorWeight: 3,
-        labelStyle: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-        ),
+        labelStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w400),
         labelColor: _tabColors[_tabController.index],
         unselectedLabelColor: const Color(0xFF999999),
         tabs: List.generate(5, (i) {
@@ -286,7 +259,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
             Icon(
               Icons.directions_car_outlined,
               size: 64,
-              color: Colors.grey.withValues(alpha: 0.3),
+              color: Colors.grey.withOpacity(0.3),
             ),
             const SizedBox(height: 12),
             Text(
@@ -295,7 +268,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
                 fontFamily: 'Poppins',
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey.withValues(alpha: 0.6),
+                color: Colors.grey.withOpacity(0.6),
               ),
             ),
           ],
@@ -309,12 +282,10 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          // เรียกใช้ HistoryCard ที่เพิ่งแยกออกไป
           child: HistoryCard(
             car: items[index],
             gradientColors: _cardBorderGradients[tabIndex],
             onTap: () {
-              // กดแล้วให้ไปยังหน้า Detail ที่แยกไว้
               Navigator.push(
                 context,
                 MaterialPageRoute(
