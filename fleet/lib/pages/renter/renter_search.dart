@@ -298,134 +298,43 @@ TimeOfDay? _startTime;
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Search icon / expanded search bar
-          if (_isSearchExpanded)
-            Expanded(
-              child: _buildExpandedSearch(),
-            )
-          else
-            _buildCollapsedSearch(),
-
-          // Spacer pushes filter+calendar to right when collapsed
-          if (!_isSearchExpanded) const Spacer(),
-
-          const SizedBox(width: 12),
-
-          // Filter button
-          _buildHeaderIcon(
-            icon: Icons.filter_alt,
-            isActive: _selectedVehicleType != null,
-            onTap: () => _showFilterSheet(),
+          Icon(
+            Icons.directions_car_outlined,
+            size: 64,
+            color: const Color(0xFF070E2A).withValues(alpha: 0.2),
           ),
-          const SizedBox(width: 8),
-
-          // Calendar button
-          _buildHeaderIcon(
-            icon: Icons.calendar_today,
-            isActive: _startDate != null,
-            onTap: () {
-              setState(() {
-                _isCalendarOpen = !_isCalendarOpen;
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCollapsedSearch() {
-    return GestureDetector(
-      key: const ValueKey('collapsed'),
-      onTap: () {
-        setState(() => _isSearchExpanded = true);
-        Future.delayed(const Duration(milliseconds: 100), () {
-          _searchFocusNode.requestFocus();
-        });
-      },
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(21),
-        ),
-        child: const Icon(
-          Icons.search,
-          color: Colors.white,
-          size: 22,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpandedSearch() {
-    return Container(
-      key: const ValueKey('expanded'),
-      height: 42,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(21),
-      ),
-      child: TextField(
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        onChanged: (_) => setState(() {}),
-        style: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 14,
-          color: Color(0xFF070E2A),
-        ),
-        decoration: InputDecoration(
-          hintText: 'Enter Search',
-          hintStyle: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 14,
-            color: const Color(0xFF070E2A).withValues(alpha: 0.4),
-          ),
-          prefixIcon: GestureDetector(
-            onTap: () {
-              if (_searchController.text.isEmpty) {
-                setState(() => _isSearchExpanded = false);
-                _searchFocusNode.unfocus();
-              }
-            },
-            child: const Icon(
-              Icons.search,
-              color: Color(0xFFAC72A1),
-              size: 22,
+          const SizedBox(height: 16),
+          Text(
+            'No vehicles found',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF070E2A).withValues(alpha: 0.5),
             ),
           ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    _searchController.clear();
-                    setState(() {});
-                  },
-                  child: const Icon(
-                    Icons.clear,
-                    color: Color(0xFF999999),
-                    size: 20,
-                  ),
+          const SizedBox(height: 8),
+          Text(
+            'Try adjusting your filters or search terms',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 13,
+              color: const Color(0xFF070E2A).withValues(alpha: 0.35),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ─────────── Empty State ───────────
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
-          const SizedBox(height: 12),
-          Text('No vehicles found', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.withValues(alpha: 0.6))),
-          const SizedBox(height: 6),
-          Text('Try adjusting your filters or dates', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey.withValues(alpha: 0.5))),
-        ],
-      ),
+
+  // ─────────── Vehicle Card ───────────
+  Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => VehicleRentDetailPage(vehicleData: vehicle)));
+      },
+      child: VehicleInfoCard(data: vehicle),
     );
   }
 
