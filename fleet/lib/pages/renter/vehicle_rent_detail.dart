@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../components/search_calendar.dart'; 
 import '../../components/time_selector.dart';
 import 'rent_payment.dart';
+import '../review_page.dart';
 
 class VehicleRentDetailPage extends StatelessWidget {
   final Map<String, dynamic> vehicleData;
@@ -11,8 +12,9 @@ class VehicleRentDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 💡 เปลี่ยนสีพื้นหลังให้เหมือนหน้า Vehicle Detail เพื่อความคลุมโทน
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
       
       // ==========================================
       // 1. AppBar (Gradient + Title)
@@ -43,27 +45,27 @@ class VehicleRentDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // =====================q=====================
-                  // 2. Image Gallery (Horizontal Scroll)
+                  // ==========================================
+                  // 2. Image Gallery (รูปแบบใหม่ใหญ่ขึ้น)
                   // ==========================================
                   Container(
-                    height: 140,
+                    height: 200,
                     width: double.infinity,
-                    color: Colors.grey.shade200,
+                    color: Colors.grey[300],
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                      itemCount: 3, 
+                      padding: const EdgeInsets.all(15),
+                      itemCount: 3,
                       itemBuilder: (context, index) => Padding(
                         padding: const EdgeInsets.only(right: 15),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           child: Image.asset(
                             vehicleData['image'] ?? 'assets/images/car.jpg', 
-                            width: 130,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.cover, 
+                            width: 250,
                             errorBuilder: (context, error, stackTrace) => Container(
-                              width: 130, color: Colors.grey.shade300, child: const Icon(Icons.directions_car, color: Colors.grey),
+                              width: 250, color: Colors.grey.shade200, child: const Icon(Icons.directions_car, color: Colors.grey),
                             ),
                           ),
                         ),
@@ -72,137 +74,117 @@ class VehicleRentDetailPage extends StatelessWidget {
                   ),
 
                   // ==========================================
-                  // 3. Information Details
+                  // 3. Information Details (UI แบบใหม่)
                   // ==========================================
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // -- โซนข้อมูลรถซ้าย/ขวา --
+                        // -- โซนข้อมูลรถ และ ไอคอนพลังงาน --
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              flex: 6,
+                              flex: 2,
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildInfoRow('License Plate', vehicleData['plate'] ?? '-'),
-                                  const SizedBox(height: 12),
-                                  _buildInfoRow('Model', vehicleData['model'] ?? '-'),
-                                  const SizedBox(height: 12),
-                                  _buildInfoRow('Vehicle type', vehicleData['vType'] ?? '-'),
+                                  _buildInfoColumn('License Plate', vehicleData['plate'] ?? '-'),
+                                  const SizedBox(height: 20),
+                                  _buildInfoColumn('Brand', vehicleData['brand'] ?? vehicleData['name'].toString().split(' ').last),
+                                  const SizedBox(height: 20),
+                                  _buildInfoColumn('Model', vehicleData['model'] ?? '-'),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 10),
                             Expanded(
-                              flex: 4,
+                              flex: 1,
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text('Brand  ', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-                                      Text(
-                                        vehicleData['brand'] ?? vehicleData['name'].toString().split(' ').last, 
-                                        style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)
-                                      ),
-                                    ],
-                                  ),
+                                  const Icon(Icons.electric_car, size: 45, color: Color.fromRGBO(7, 14, 42, 1.0)),
+                                  const SizedBox(height: 5),
+                                  const Text('ENERGY', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                                   const SizedBox(height: 15),
-                                  const Icon(Icons.electric_car_outlined, size: 45, color: Color(0xFF070E2A)),
-                                  const SizedBox(height: 10),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF6DDA75),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        CircleAvatar(radius: 4, backgroundColor: Colors.white),
-                                        SizedBox(width: 6),
-                                        Text('Available', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                                      ],
-                                    ),
-                                  )
+                                  _buildStatusBadge('Available', const Color(0xFF6DDA75)),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 25),
+
+                        // -- โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (ปรับใหม่) --
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInfoColumn('Vehicle Type', vehicleData['vType'] ?? '-'),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                                    const SizedBox(width: 5),
+                                    Text(vehicleData['rating']?.toString() ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 15), // ระยะห่างระหว่างเรทติ้งกับปุ่ม Comment
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(
+                                          builder: (context) => const FleetEntityReviewPage(
+                                            isCar: true, 
+                                            entityName: 'Vehicle Reviews'
+                                          )
+                                        ));
+                                      },
+                                      child: const Text(
+                                        'Comment', 
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins', 
+                                          fontSize: 13, 
+                                          decoration: TextDecoration.underline, 
+                                          color: Color.fromRGBO(172, 114, 161, 1.0), // 💡 สีม่วงตามที่ต้องการ
+                                          fontWeight: FontWeight.bold
+                                        )
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 25),
 
                         // -- โซนที่อยู่ (Address) --
-                        const Text('Address', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-                        const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F7F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            vehicleData['address'] ?? '-', 
-                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.black87)
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // -- โซนราคา (Deposit & Price) --
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                const Text('Deposit (฿)   ', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-                                Text(
-                                  vehicleData['deposit']?.toString() ?? '1000', 
-                                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                const Text('Price per hour (฿)   ', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-                                Text(
-                                  vehicleData['price']?.toString() ?? '-', 
-                                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)
-                                ),
-                              ],
+                            const Text('Address', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(15),
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                              child: Text(vehicleData['address'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 25),
 
-                        // -- โซนเรทติ้งและคอมเมนต์ (Rating & Comment) --
+                        // -- โซนมัดจำ และ ราคา (ย้ายมาอยู่คู่กัน) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-                                const SizedBox(width: 10),
-                                const Icon(Icons.star, color: Colors.amber, size: 16),
-                                const SizedBox(width: 4),
-                                Text(
-                                  vehicleData['rating']?.toString() ?? '-', 
-                                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)
-                                ),
-                              ],
-                            ),
-                            GestureDetector(
-                              onTap: () {},
-                              child: const Text(
-                                'Comment', 
-                                style: TextStyle(fontFamily: 'Poppins', fontSize: 12, decoration: TextDecoration.underline, color: Colors.black87)
-                              ),
-                            ),
+                            _buildInfoColumn('Deposit (฿)', vehicleData['deposit']?.toString() ?? '1000'),
+                            _buildInfoColumn('Price/Hour (฿)', vehicleData['price']?.toString() ?? '-'),
                           ],
                         ),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
@@ -212,7 +194,7 @@ class VehicleRentDetailPage extends StatelessWidget {
           ),
 
           // ==========================================
-          // 4. Bottom Rent Button
+          // 4. Bottom Rent Button (คงไว้เหมือนเดิม)
           // ==========================================
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -227,7 +209,6 @@ class VehicleRentDetailPage extends StatelessWidget {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  // 💡 เรียกฟังก์ชันโชว์ Modal ปฏิทินและเวลา
                   _showRentCalendarModal(context);
                 },
                 child: const Text(
@@ -242,34 +223,43 @@ class VehicleRentDetailPage extends StatelessWidget {
     );
   }
 
-  // Widget ตัวช่วยสำหรับสร้างแถวข้อความข้อมูลซ้ายขวาให้เป็นระเบียบ
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
+  // ==========================================
+  // 💡 Helper Widgets 
+  // ==========================================
+  Widget _buildInfoColumn(String label, String value) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          flex: 5,
-          child: Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-        ),
-        Expanded(
-          flex: 5,
-          child: Text(value, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
-        ),
+        Text(label, style: const TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600)),
       ],
     );
   }
 
+  Widget _buildStatusBadge(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircleAvatar(radius: 4, backgroundColor: Colors.white),
+          const SizedBox(width: 8),
+          Text(status, style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
   // ==========================================
-  // 💡 Modal เลือกวันเช่าและเวลา (Bottom Sheet)
+  // 💡 Modal เลือกวันเช่าและเวลา (คงเดิมไม่แตะต้อง)
   // ==========================================
   void _showRentCalendarModal(BuildContext context) {
-    // 💡 1. ดึงวันและเวลาปัจจุบันจากเครื่อง
     final DateTime now = DateTime.now();
-    
-    // 💡 2. ตั้งค่า Default ให้ startDate เป็นวันนี้
     DateTime? startDate = now;
     DateTime? endDate;
-    TimeOfDay? startTime; // ไม่ตั้งค่าให้เพื่อรอดูว่าผู้ใช้จะกดเลือกไหม
+    TimeOfDay? startTime; 
     TimeOfDay? endTime;   
     DateTime calendarMonth = DateTime(now.year, now.month, 1); 
 
@@ -344,20 +334,14 @@ class VehicleRentDetailPage extends StatelessWidget {
                             elevation: 0,
                           ),
                           onPressed: () {
-                            // 💡 3. ไม่บังคับกรอกเวลาแล้ว แต่ยังเช็คว่าอย่างน้อยต้องมี startDate
                             if (startDate != null) {
-                              
-                              // ถ้าไม่ได้เลือก End Date ให้ตีซะว่าเช่าและคืนภายในวันเดียวกัน
                               DateTime finalStartDate = startDate!;
                               DateTime finalEndDate = endDate ?? finalStartDate;
-
-                              // 💡 4. ถ้าไม่เลือกเวลา ให้ Default เป็นเที่ยงคืน (00:00)
                               TimeOfDay finalStartTime = startTime ?? const TimeOfDay(hour: 0, minute: 0);
                               TimeOfDay finalEndTime = endTime ?? const TimeOfDay(hour: 0, minute: 0);
 
-                              Navigator.pop(context); // ปิด Modal ปฏิทิน
+                              Navigator.pop(context); 
                               
-                              // เปลี่ยนหน้าไป Payment
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(

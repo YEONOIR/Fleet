@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'renter_your_rent.dart'; // 💡 อย่าลืม import ให้ตรง path เพื่อใช้เชื่อมกลับไปหน้าแท็บหลัก
-
+import 'renter_your_rent.dart'; // 💡 อย่าลืม import ให้ตรง path
+import '../review_page.dart'; // 💡 อย่าลืม import หน้า ReviewPage ด้วยนะครับ
 
 class RentHistoryDetailPage extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -132,11 +132,50 @@ class RentHistoryDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
+                        // -- 💡 โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (สลับที่ใหม่) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildInfoColumn('Vehicle Type', car['type']),
-                            _buildInfoColumn('Deposit (฿)', car['deposit'].toString()),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      car['rating'].toString(),
+                                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: 15),
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(
+                                          builder: (context) => const FleetEntityReviewPage(
+                                            isCar: true, 
+                                            entityName: 'Vehicle Reviews'
+                                          )
+                                        ));
+                                      },
+                                      child: const Text(
+                                        'Comment', 
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins', 
+                                          fontSize: 13, 
+                                          decoration: TextDecoration.underline, 
+                                          color: Color.fromRGBO(172, 114, 161, 1.0), // 💡 สีม่วงตามต้องการ
+                                          fontWeight: FontWeight.bold
+                                        )
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                         const SizedBox(height: 25),
@@ -157,27 +196,12 @@ class RentHistoryDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // 4. Pricing & Rating
+                        // -- 💡 โซนมัดจำ และ ราคา (ย้ายมาคู่กัน) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            _buildInfoColumn('Deposit (฿)', car['deposit'].toString()),
                             _buildInfoColumn('Price/Hour (฿)', car['price'].toString()),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      car['rating'].toString(),
-                                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                )
-                              ],
-                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -189,14 +213,14 @@ class RentHistoryDetailPage extends StatelessWidget {
                         else
                           _buildBookingInfo(),
 
-                        // 💡 5. โชว์รูปภาพ Before Rent ถ้าเป็น USING, COMPLETE, หรือ PENDING(แบบคืนรถ)
+                        // 💡 โชว์รูปภาพ Before Rent ถ้าเป็น USING, COMPLETE, หรือ PENDING(แบบคืนรถ)
                         if (statusString == 'USING' || statusString == 'COMPLETE' || (statusString == 'PENDING' && pendingType == 'return'))
                           _buildBeforeRentImages(),
                         
                         if (statusString == 'COMPLETE')
                           _buildDefectInfo(),
                           
-                        // 💡 6. ส่ง pendingType เข้าไปเช็คในฟังก์ชัน PendingInfo
+                        // 💡 ส่ง pendingType เข้าไปเช็คในฟังก์ชัน PendingInfo
                         if (statusString == 'PENDING') _buildPendingInfo(pendingType),
                       ],
                     ),
@@ -206,7 +230,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             ),
           ),
 
-          // 💡 7. Action Button (ซ่อนปุ่มถ้าเป็น PENDING แบบคืนรถ)
+          // 7. Action Button (ซ่อนปุ่มถ้าเป็น PENDING แบบคืนรถ)
           if (statusString == 'ACCEPT' || (statusString == 'PENDING' && pendingType == 'rent') || statusString == 'USING')
             Padding(
               padding: const EdgeInsets.all(20),
@@ -378,6 +402,7 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
+  // 💡 4. ปรับ _buildBeforeRentImages ให้แสดงผลเหมือนกับหน้า Schedule Detail
   Widget _buildBeforeRentImages() {
     final List<String> images = car['beforeRentImages'] ?? [];
     if (images.isEmpty) return const SizedBox.shrink();
@@ -388,14 +413,16 @@ class RentHistoryDetailPage extends StatelessWidget {
         const SizedBox(height: 25),
         const Text('Before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 120,
+        Container(
+          height: 200, 
+          color: Colors.grey.shade200, // พื้นหลังสีเทาแบบ Schedule Detail
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(15),
             itemCount: images.length,
             itemBuilder: (context, index) => Container(
+              width: 250, // กว้าง 250 แบบ Schedule Detail
               margin: const EdgeInsets.only(right: 15),
-              width: 120,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 image: DecorationImage(
@@ -410,7 +437,6 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 แยก UI ของข้อความ Pending ทั้ง 2 แบบ
   Widget _buildPendingInfo(String pendingType) {
     if (pendingType == 'return') {
       return const Padding(
@@ -418,7 +444,6 @@ class RentHistoryDetailPage extends StatelessWidget {
         child: Center(
           child: Column(
             children: [
-              // 💡 เปลี่ยนจาก Icons.access_time_filled เป็นนาฬิกาทราย
               Icon(Icons.hourglass_bottom, size: 50, color: Color(0xFFE6A817)),
               SizedBox(height: 15),
               Text(
@@ -431,7 +456,6 @@ class RentHistoryDetailPage extends StatelessWidget {
         ),
       );
     } else {
-      // แบบรอเช่ารถ
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 30),
         child: Center(
@@ -455,7 +479,6 @@ class RentHistoryDetailPage extends StatelessWidget {
   // ส่วนปุ่มและการทำงาน (Actions)
   // ==========================================
   Widget _buildActionButton(BuildContext context, String status) {
-    // 💡 ถ้าเป็น Accept หรือ Pending(แบบเช่า) ให้แสดงปุ่มยกเลิก
     if (status == 'PENDING' || status == 'ACCEPT') {
       return SizedBox(
         width: double.infinity,

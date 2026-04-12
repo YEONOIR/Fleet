@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../components/renter_info_card.dart';
 import '../../utils/vehicle_utils.dart';
+import '../review_page.dart';
 
 class VehicleDetailPage extends StatelessWidget {
   final Map<String, dynamic> vehicle;
@@ -31,7 +32,7 @@ class VehicleDetailPage extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () {
-              // 💡 เรียกใช้ฟังก์ชันโชว์ Modal ยืนยันการลบ (เดี๋ยวเราจะสร้างในจุดที่ 2)
+              // 💡 เรียกใช้ฟังก์ชันโชว์ Modal ยืนยันการลบ
               _showDeleteConfirmation(context);
             },
             icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
@@ -65,7 +66,7 @@ class VehicleDetailPage extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        // 2. Info & Status Section (ปรับปรุงส่วน Icon และ Fuel)
+                        // 2. Info & Status Section
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -87,15 +88,12 @@ class VehicleDetailPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  // 💡 เลือก Icon ตามประเภทพลังงาน
                                   Icon(
                                     getFuelIcon(vehicle['V Fuel']), 
                                     size: 45, 
                                     color: const Color.fromRGBO(7, 14, 42, 1.0)
                                   ),
                                   const SizedBox(height: 5),
-                                  
-                                  // 💡 แสดง 'ENERGY' สำหรับรถไฟฟ้า หรือชื่อน้ำมันสำหรับรถอื่น
                                   Text(
                                     vehicle['V Fuel'].toString().toUpperCase() == 'EV' 
                                         ? 'ENERGY' 
@@ -116,11 +114,47 @@ class VehicleDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
+                        // -- โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (เอา Rating/Comment ขึ้นมาแทน) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildInfoColumn('Vehicle Type', vehicle['V Type']),
-                            _buildInfoColumn('Deposit (฿)', vehicle['V Deposit'].toString()),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 20),
+                                    const SizedBox(width: 5),
+                                    Text(vehicle['V_Rate'].toString(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 15), // ระยะห่างระหว่างเรทติ้งกับปุ่ม Comment
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(
+                                          builder: (context) => const FleetEntityReviewPage(
+                                            isCar: true, 
+                                            entityName: 'Vehicle Reviews'
+                                          )
+                                        ));
+                                      },
+                                      child: const Text(
+                                        'Comment', 
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins', 
+                                          fontSize: 13, 
+                                          decoration: TextDecoration.underline, 
+                                          color: Color.fromRGBO(172, 114, 161, 1.0), // สีม่วงเดียวกับ Schedule Detail
+                                          fontWeight: FontWeight.bold
+                                        )
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                         const SizedBox(height: 25),
@@ -141,36 +175,20 @@ class VehicleDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // 4. Pricing & Rating
+                        // 4. Pricing & Deposit (สลับ Deposit ลงมาคู่กับ Price/Hour)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            _buildInfoColumn('Deposit (฿)', vehicle['V Deposit'].toString()),
                             _buildInfoColumn('Price/Hour (฿)', vehicle['V Price'].toString()),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                                    const SizedBox(width: 5),
-                                    Text(vehicle['V_Rate'].toString(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
-                                  ],
-                                )
-                              ],
-                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
-                        const Align(
-                          alignment: Alignment.centerRight,
-                          child: Text('Comment', style: TextStyle(fontFamily: 'Poppins', decoration: TextDecoration.underline, color: Colors.blueGrey)),
-                        ),
                         
                         // 5. ส่วนแสดงข้อมูลเพิ่มเติมสำหรับสถานะ PENDING
                         if (status == 'pending') _buildPendingInfo(),
 
-                        // 💡 6. ส่วนแสดงข้อมูลผู้เช่าและรูปภาพสำหรับสถานะ USING เท่านั้น
+                        // 6. ส่วนแสดงข้อมูลผู้เช่าและรูปภาพสำหรับสถานะ USING เท่านั้น
                         if (status == 'using') _buildUsingInfo(context),
                       ],
                     ),
@@ -190,14 +208,13 @@ class VehicleDetailPage extends StatelessWidget {
       ),
     );
   }
+
   // ==========================================
   // 💡 Widget สำหรับสถานะ USING (ข้อมูลผู้เช่า + รูป Before Rent)
   // ==========================================
   Widget _buildUsingInfo(BuildContext context) {
-    // ดึงข้อมูล renter ออกมาเก็บในตัวแปรเพื่อให้โค้ดสะอาด
     final renter = vehicle['renterData'];
 
-    // กรณีถ้าไม่มีข้อมูลผู้เช่า (ป้องกัน Error)
     if (renter == null) return const SizedBox.shrink();
 
     return Column(
@@ -205,7 +222,6 @@ class VehicleDetailPage extends StatelessWidget {
       children: [
         const SizedBox(height: 10),
         
-        // 💡 ดึงข้อมูลจาก dummy มาใส่ใน Component
         RenterInfoCard(
           name: renter['name'],
           phone: renter['phone'],
@@ -218,43 +234,55 @@ class VehicleDetailPage extends StatelessWidget {
         ),
 
         const SizedBox(height: 25),
-        const Text('Before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-
-        // --- Before Rent Images (ดึงรูปจากรถคันนั้นๆ) ---
-        SizedBox(
-          height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: 3,
-            itemBuilder: (context, index) => Container(
-              margin: const EdgeInsets.only(right: 10),
-              width: 130,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                image: DecorationImage(
-                  image: AssetImage(vehicle['imagePath']),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-        ),
-        
-        const SizedBox(height: 25),
+        // 2. ส่วนของ Total Price (รูปแบบเดียวกับ ScheduleDetailPage)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Price', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.grey)),
+            const Text('Total Price', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
             Text(
-              '฿ ${renter['totalPrice']}', // ดึงราคาจาก dummy
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0)),
+              '฿ ${renter['totalPrice']}', 
+              style: const TextStyle(
+                fontFamily: 'Poppins', 
+                fontSize: 18, 
+                color: Color.fromRGBO(172, 114, 161, 1.0), // สีม่วง
+                fontWeight: FontWeight.bold
+              ),
             ),
           ],
+        ),
+        
+        const SizedBox(height: 20),
+
+        // 3. ส่วนของ Pictures before rent (รูปแบบเดียวกับ ScheduleDetailPage)
+        const Text('Pictures before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+
+        Container(
+          height: 200, 
+          color: Colors.grey.shade200,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(15),
+            itemCount: 3,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 250, 
+                margin: const EdgeInsets.only(right: 15),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  image: DecorationImage(
+                    image: AssetImage(vehicle['imagePath']), // ดึงจาก path ที่คุณมี
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );
   }
+
   // Widget สำหรับสถานะ Pending
   Widget _buildPendingInfo() {
     return const Padding(
@@ -320,12 +348,11 @@ class VehicleDetailPage extends StatelessWidget {
       ),
     );
   }
+
   // ==========================================
   // 💡 Modal ยืนยันการลบรถ (Delete Confirmation)
   // ==========================================
   void _showDeleteConfirmation(BuildContext context) {
-    // สมมติว่าในหน้านี้คุณรับตัวแปร vehicle มา (เช่น widget.vehicle['V Name'])
-    // ถ้าตัวแปรชื่ออื่น ให้เปลี่ยนให้ตรงกับโค้ดของคุณนะครับ
     String vehicleName = vehicle['V Name'] ?? 'this vehicle'; 
 
     showDialog(
@@ -345,7 +372,7 @@ class VehicleDetailPage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // ปิด Modal เฉยๆ
+            onPressed: () => Navigator.pop(context),
             child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
           ),
           ElevatedButton(
@@ -354,15 +381,8 @@ class VehicleDetailPage extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
             ),
             onPressed: () {
-              // TODO: ใส่ Logic ลบข้อมูลออกจาก Database จริงๆ ตรงนี้
-
-              // 1. ปิด Modal ยืนยัน
               Navigator.pop(context); 
-              
-              // 2. ปิดหน้า Vehicle Detail (เด้งกลับไปหน้า Smart Garage)
               Navigator.pop(context); 
-              
-              // 3. โชว์แจ้งเตือนว่าลบสำเร็จแล้ว (โชว์ที่หน้า Smart Garage)
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Vehicle "$vehicleName" has been deleted.', style: const TextStyle(fontFamily: 'Poppins')),
@@ -376,5 +396,4 @@ class VehicleDetailPage extends StatelessWidget {
       ),
     );
   }
- 
 }

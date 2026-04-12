@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../pages/review_page.dart';
 
 class TenantCard extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -64,13 +65,28 @@ class TenantCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis, 
                           ),
                         ),
-                        Row(
-                          children: [
-                            const Icon(Icons.star, color: Color(0xFFFFD700), size: 18),
-                            const SizedBox(width: 4),
-                            Text(rating, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-                          ],
-                        ),
+
+GestureDetector(
+  onTap: () {
+    // 💡 นำทางไปหน้ารีวิว และกำหนดให้เปิดแท็บผู้ใช้งาน (index: 1)
+    Navigator.push(context, MaterialPageRoute(
+  builder: (context) => const FleetEntityReviewPage(
+    isCar: false, 
+    entityName: 'User Reviews' // ใส่ชื่อคนได้ถ้ามีตัวแปร เช่น '${renter['name']} Reviews'
+  )
+));
+  },
+  child: Row(
+    children: [
+      const Icon(Icons.star, color: Color(0xFFFFD700), size: 18),
+      const SizedBox(width: 4),
+      Text(rating, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+      const SizedBox(width: 8),
+      // 💡 เพิ่มข้อความเพื่อให้รู้ว่ากดเข้าไปอ่านรีวิวผู้ใช้คนนี้ได้
+      const Text('(Check Reviews)', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0))),
+    ],
+  ),
+),
                       ],
                     ),
                     const SizedBox(height: 5), 

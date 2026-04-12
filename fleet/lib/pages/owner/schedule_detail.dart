@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../components/tenant_card.dart';
+import '../review_page.dart'; // 💡 อย่าลืมเช็ค path หน้ารีวิวให้ตรงกับของคุณด้วยนะครับ
 
 class ScheduleDetailPage extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -19,10 +20,9 @@ class ScheduleDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 💡 1. วิดเจ็ต: แถบรูปภาพรถ (เปลี่ยนมาใช้รูป Assets ของคุณ)
+  // 1. วิดเจ็ต: แถบรูปภาพรถ
   // ==========================================
   Widget _buildImageGallery() {
-    // 💡 ลิสต์รายชื่อรูปภาพในโฟลเดอร์ assets ของคุณ
     final List<String> assetImages = [
       'assets/images/car.jpg',
       'assets/images/bike.jpg',
@@ -30,20 +30,20 @@ class ScheduleDetailPage extends StatelessWidget {
     ];
 
     return Container(
-      height: 120,
+      height: 200, 
       color: Colors.grey.shade200,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.all(15),
-        itemCount: assetImages.length, // จำนวนรูปตามลิสต์
+        itemCount: assetImages.length, 
         itemBuilder: (context, index) {
           return Container(
-            width: 120,
+            width: 250, 
             margin: const EdgeInsets.only(right: 15),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               image: DecorationImage(
-                image: AssetImage(assetImages[index]), // 💡 ใช้ AssetImage ดึงรูปจากในเครื่อง
+                image: AssetImage(assetImages[index]), 
                 fit: BoxFit.cover,
               ),
             ),
@@ -54,92 +54,156 @@ class ScheduleDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 2. วิดเจ็ต: ข้อมูลรถ (จัดแบบ Grid)
+  // 2. วิดเจ็ต: ข้อมูลรถ (จัด Layout ใหม่)
   // ==========================================
-  Widget _buildVehicleInfo(Color statusColor, String status) {
+  Widget _buildVehicleInfo(BuildContext context, Color statusColor, String status) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // -- โซนข้อมูลรถ และ ไอคอนพลังงาน (Status) --
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
+                flex: 2,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoRow('License Plate', 'AB 1222'),
-                    _buildInfoRow('Model', 'Civic e:HEV'),
-                    _buildInfoRow('Vehicle Type', 'Sedan'),
+                    _buildInfoColumn('License Plate', 'AB 1222'),
+                    const SizedBox(height: 20),
+                    _buildInfoColumn('Brand', 'Honda'),
+                    const SizedBox(height: 20),
+                    _buildInfoColumn('Model', 'Civic e:HEV'),
                   ],
                 ),
               ),
               Expanded(
+                flex: 1,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildInfoRow('Brand', 'Honda'),
-                    const SizedBox(height: 10),
-                    // ไอคอน EV และป้าย Status
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        const Icon(Icons.electric_car, size: 35, color: Color.fromRGBO(7, 14, 42, 1.0)),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
-                          child: Text(status, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
+                    const Icon(Icons.electric_car, size: 45, color: Color.fromRGBO(7, 14, 42, 1.0)),
+                    const SizedBox(height: 5),
+                    const Text('ENERGY', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 15),
+                    _buildStatusBadge(status, statusColor),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 15),
-          const Text('Address', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
-          const SizedBox(height: 5),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
-            child: const Text('111/11, Ander Road, Cromium, Roselina, Bangkok 11111', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
-          ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 25),
+
+          // -- โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (ย้าย Comment ขึ้นมาต่อท้าย Rating) --
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildInfoRow('Deposit (฿)', '1,000')),
-              Expanded(child: _buildInfoRow('Price per hour (฿)', '250')),
+              _buildInfoColumn('Vehicle Type', 'Sedan'),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      // ส่วนของ Rating (กดดู Vehicle Reviews)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => const FleetEntityReviewPage(
+                              isCar: true, 
+                              entityName: 'Vehicle Reviews'
+                            )
+                          ));
+                        },
+                        child: const Row(
+                          children: [
+                            Icon(Icons.star, color: Colors.amber, size: 20),
+                            SizedBox(width: 5),
+                            Text('4.5', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 15), // ระยะห่างระหว่าง Rating กับ Comment
+                      // ส่วนของ Comment (กดดู User Reviews)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => const FleetEntityReviewPage(
+                              isCar: false, 
+                              entityName: 'Vehicle Reviews'
+                            )
+                          ));
+                        },
+                        child: const Text(
+                          'Comment', 
+                          style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 25),
+
+          // -- โซนที่อยู่ (Address) --
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Address', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
+                child: const Text('111/11, Ander Road, Cromium, Roselina, Bangkok 11111', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 25),
+
+          // -- โซนมัดจำ และ ราคา --
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text('Rating ', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
-                  const Icon(Icons.star, color: Color(0xFFFFD700), size: 18),
-                  const Text(' 4.5', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-                ],
-              ),
-              const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
+              _buildInfoColumn('Deposit (฿)', '1,000'),
+              _buildInfoColumn('Price/Hour (฿)', '250'),
             ],
           ),
+          const SizedBox(height: 10),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+  // 💡 Helper Widget
+  Widget _buildInfoColumn(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+      ],
+    );
+  }
+
+  // 💡 Helper Widget: ป้าย Status
+  Widget _buildStatusBadge(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(flex: 1, child: Text(title, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey))),
-          Expanded(flex: 1, child: Text(value, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500))),
+          const CircleAvatar(radius: 4, backgroundColor: Colors.white),
+          const SizedBox(width: 8),
+          Text(status, style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -166,7 +230,7 @@ class ScheduleDetailPage extends StatelessWidget {
                         side: const BorderSide(color: Colors.redAccent, width: 2),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () => _showRejectReasonModal(context, booking), // 💡 เรียก Modal ปฏิเสธ
+                      onPressed: () => _showRejectReasonModal(context, booking),
                       child: const Text('Decline', style: TextStyle(fontFamily: 'Poppins', color: Colors.redAccent, fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -178,7 +242,7 @@ class ScheduleDetailPage extends StatelessWidget {
                         backgroundColor: const Color(0xFF2E8B57),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () => _showAcceptModal(context, booking), // 💡 เรียก Modal ยอมรับ
+                      onPressed: () => _showAcceptModal(context, booking),
                       child: const Text('Accept', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -208,7 +272,6 @@ class ScheduleDetailPage extends StatelessWidget {
               const SizedBox(height: 20),
               const Text('Defect', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 5),
-              // 💡 กล่องข้อความ Defect (สไตล์เดียวกับ Address)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
@@ -220,7 +283,6 @@ class ScheduleDetailPage extends StatelessWidget {
           ),
         );
 
-      // 💡 แยก case 'Using' ออกมา เพื่อใส่ปุ่มกล้อง!
       case 'Using':
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -250,7 +312,6 @@ class ScheduleDetailPage extends StatelessWidget {
             children: [
               const Text('Reason for cancellation', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.redAccent)),
               const SizedBox(height: 5),
-              // 💡 กล่องข้อความ Cancel Reason (สไตล์เดียวกับ Address)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
@@ -301,7 +362,8 @@ class ScheduleDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildImageGallery(),
-            _buildVehicleInfo(statusColor, status),
+            
+            _buildVehicleInfo(context, statusColor, status), 
             
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -315,8 +377,9 @@ class ScheduleDetailPage extends StatelessWidget {
       ),
     );
   }
+
   // ==========================================
-  // 💡 Modal Functions (ย้ายมาจากหน้า RequestCard)
+  // 💡 Modal Functions
   // ==========================================
   void _showRejectReasonModal(BuildContext context, Map<String, dynamic> booking) {
     TextEditingController reasonController = TextEditingController();
@@ -371,8 +434,8 @@ class ScheduleDetailPage extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
-              Navigator.pop(context); // ปิด Modal
-              Navigator.pop(context); // ปิดหน้า Detail กลับไปหน้าแรก
+              Navigator.pop(context); 
+              Navigator.pop(context); 
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rejection sent to the renter.', style: TextStyle(fontFamily: 'Poppins'))));
             },
             child: const Text('Send to Renter', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
@@ -394,8 +457,8 @@ class ScheduleDetailPage extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF75DB73), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
-              Navigator.pop(context); // ปิด Modal
-              Navigator.pop(context); // ปิดหน้า Detail กลับไปหน้าแรก
+              Navigator.pop(context); 
+              Navigator.pop(context); 
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rental accepted successfully!', style: TextStyle(fontFamily: 'Poppins'))));
             },
             child: const Text('Confirm Rent', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),

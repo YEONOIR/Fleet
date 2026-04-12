@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../pages/review_page.dart';
 
 class RenterInfoCard extends StatelessWidget {
   final String name;
@@ -27,7 +28,7 @@ class RenterInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(42, 35, 66, 0.05), // สีม่วงอ่อนโปร่งแสง
+        color: Colors.white, // 💡 1. เปลี่ยนพื้นหลังเป็นสีขาวตรงนี้
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color.fromRGBO(172, 114, 161, 0.2)),
       ),
@@ -64,18 +65,28 @@ class RenterInfoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Row(
-                children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 18),
-                  const SizedBox(width: 4),
-                  Text(
-                    rating.toString(),
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const FleetEntityReviewPage(
+                      isCar: false, 
+                      entityName: 'User Reviews' // ใส่ชื่อคนได้ถ้ามีตัวแปร เช่น '${renter['name']} Reviews'
+                    )
+                  ));
+                },
+                child: Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 18),
+                    const SizedBox(width: 4),
+                    Text(
+                      rating.toString(),
+                      style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    // 💡 2. เปลี่ยนสี Check Reviews เป็นสีม่วงตรงนี้
+                    const Text('Check Reviews >', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Color.fromRGBO(172, 114, 161, 1.0))),
+                  ],
+                ),
               ),
             ],
           ),
