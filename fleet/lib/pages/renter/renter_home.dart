@@ -95,13 +95,28 @@ class RenterHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // ── Car Cards ──
-            ...List.generate(_topCars.length, (index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildCarCard(context, _topCars[index]),
-              );
-            }),
+            // ── Car Cards (เรียกใช้ผ่าน Component ใหม่) ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20), 
+              child: Column(
+                children: List.generate(_topCars.length, (index) {
+                  return VehicleInfoCard(
+                    data: _topCars[index],
+                    // 💡 เพิ่ม onTap ให้มันลิงก์ไปหน้า Detail
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VehicleRentDetailPage(
+                            vehicleData: _topCars[index],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ),
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -362,26 +377,6 @@ class RenterHomePage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ─────────── Build Car Card ───────────
-  Widget _buildCarCard(BuildContext context, Map<String, dynamic> car) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VehicleRentDetailPage(vehicleData: car),
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: VehicleInfoCard(
-          data: car,
-        ),
       ),
     );
   }

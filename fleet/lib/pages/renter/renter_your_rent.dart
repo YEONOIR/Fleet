@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'renter_schedule_detail.dart';
+import '../../components/history_card.dart'; // ใส่ path ให้ตรงกับโฟลเดอร์ของคุณ
+import 'rent_history.dart'; // ใส่ path ให้ตรงกับโฟลเดอร์ของคุณ
 
 class RenterYourRentPage extends StatefulWidget {
-  const RenterYourRentPage({super.key});
+  // 💡 1. เพิ่มตัวแปรรับค่า initialIndex และกำหนดค่าเริ่มต้นเป็น 0 (แท็บ Accept)
+  final int initialIndex;
+  
+  const RenterYourRentPage({super.key, this.initialIndex = 0});
 
   @override
   State<RenterYourRentPage> createState() => _RenterYourRentPageState();
@@ -21,26 +25,27 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     'Pending',
   ];
 
+  // 💡 อัปเดตสีแท็บ
   static const List<Color> _tabColors = [
-    Color(0xFF2E7D6E), // Accept – teal
-    Color(0xFF7B1FA2), // Using – purple
-    Color(0xFFAC72A1), // Complete – lavender pink
-    Color(0xFFC62828), // Cancel – red
-    Color(0xFFE6A817), // Pending – amber gold
+    Color(0xFF2E7D6E), // Accept – กลับมาใช้สีเดิม
+    Color.fromRGBO(172, 114, 161, 1.0), // Using 
+    Color(0xFF31A1D1), // Complete 
+    Color(0xFFC62828), // Cancel 
+    Color(0xFFE6A817), // Pending 
   ];
 
-  // ── Border gradient pairs per tab ──
+  // 💡 อัปเดตสีขอบและเงาของการ์ด
   static const List<List<Color>> _cardBorderGradients = [
-    [Color(0xFF4A1942), Color(0xFFAC72A1)], // Accept
-    [Color(0xFF1A237E), Color(0xFF7B1FA2)], // Using
-    [Color(0xFFAC72A1), Color(0xFFE1BEE7)], // Complete
-    [Color(0xFF4A1942), Color(0xFFC62828)], // Cancel
+    [Color(0xFF2E7D6E), Color(0xFF80CBC4)], // Accept (กลับมาใช้คู่สีเดิม)
+    [Color.fromRGBO(172, 114, 161, 1.0), Color(0xFFE1BEE7)], // Using
+    [Color(0xFF31A1D1), Color(0xFFB3E5FC)], // Complete
+    [Color(0xFFC62828), Color(0xFFEF9A9A)], // Cancel
     [Color(0xFFE6A817), Color(0xFFFFF176)], // Pending
   ];
 
   // ── Mock rent data ──
-  // Each item has a 'status' field matching a tab index
-  List<Map<String, dynamic>> _rentData = [
+  static const List<Map<String, dynamic>> _rentData = [
+    // ... ข้อมูลเดิมของคุณ ...
     // ── Accept (index 0) ──
     {
       'name': "Sukrit's Honda",
@@ -50,9 +55,16 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'type': '4 Door Car',
       'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
       'price': 250,
-      'image': 'assets/images/car.jpg',
+      'image': 'assets/images/car.jpg', // อย่าลืมใส่รูปจริงใน assets
       'status': 0,
+      'fuel': 'EV',
+      'deposit': 1000,
+      'owner': {'name': 'Sukrit', 'phone': '081-234-5678', 'rating': 4.8},
+      'booking': {'startDate': '10 Apr 2026', 'endDate': '12 Apr 2026', 'startTime': '10:00', 'endTime': '10:00', 'totalPrice': 12000},
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'],
     },
+
+    // ── Using (index 1) ──
     {
       'name': "Aran's Toyota",
       'rating': 4.3,
@@ -62,34 +74,15 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'address': '333 Siam Square, Pathum Wan, Bangkok 10330',
       'price': 300,
       'image': 'assets/images/car.jpg',
-      'status': 0,
-    },
-
-    // ── Using (index 1) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
       'status': 1,
+      'fuel': 'Gasohol 95',
+      'deposit': 1500,
+      'owner': {'name': 'Aran', 'phone': '089-876-5432', 'rating': 4.2},
+      'booking': {'startDate': '08 Apr 2026', 'endDate': '09 Apr 2026', 'startTime': '09:00', 'endTime': '18:00', 'totalPrice': 2700},
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg', 'assets/images/car.jpg'],
     },
 
     // ── Complete (index 2) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
-      'status': 2,
-    },
     {
       'name': "Nari's Mazda",
       'rating': 4.0,
@@ -100,6 +93,12 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'price': 220,
       'image': 'assets/images/car.jpg',
       'status': 2,
+      'fuel': 'Diesel',
+      'deposit': 1000,
+      'owner': {'name': 'Nari', 'phone': '082-333-4444', 'rating': 4.5},
+      'booking': {'startDate': '01 Apr 2026', 'endDate': '03 Apr 2026', 'startTime': '12:00', 'endTime': '12:00', 'totalPrice': 10560},
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'],
+      'defect': 'พบรอยขีดข่วนเล็กน้อยที่กันชนหน้าซ้าย นอกนั้นปกติครับ', 
     },
 
     // ── Cancel (index 3) ──
@@ -113,20 +112,14 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'price': 250,
       'image': 'assets/images/car.jpg',
       'status': 3,
+      'fuel': 'EV',
+      'deposit': 1000,
+      'owner': {'name': 'Sukrit', 'phone': '081-234-5678', 'rating': 4.8},
+      'booking': {'startDate': '15 Apr 2026', 'endDate': '16 Apr 2026', 'startTime': '08:00', 'endTime': '20:00', 'totalPrice': 3000},
+      'beforeRentImages': [],
     },
 
     // ── Pending (index 4) ──
-    {
-      'name': "Sukrit's Honda",
-      'rating': 4.5,
-      'plate': 'AB 1222',
-      'model': 'Civic e:HEV',
-      'type': '4 Door Car',
-      'address': '111/11, Ander Road, Cromium, Roselina, Bangkok 11111',
-      'price': 250,
-      'image': 'assets/images/car.jpg',
-      'status': 4,
-    },
     {
       'name': "Krit's BMW",
       'rating': 4.8,
@@ -137,13 +130,44 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       'price': 450,
       'image': 'assets/images/car.jpg',
       'status': 4,
+      'fuel': 'PHEV',
+      'deposit': 3000,
+      'owner': {'name': 'Krit', 'phone': '085-555-6666', 'rating': 4.9},
+      'booking': {'startDate': '20 Apr 2026', 'endDate': '22 Apr 2026', 'startTime': '10:00', 'endTime': '10:00', 'totalPrice': 21600},
+      'beforeRentImages': [],
+      // 💡 เพิ่ม pendingType: 'rent' สำหรับรายการที่รอการยืนยันเช่า
+      'pendingType': 'rent', 
+    },
+    {
+      'name': "Sompong's MG",
+      'rating': 4.2,
+      'plate': 'กท 9999',
+      'model': 'MG ZS EV',
+      'type': 'SUV',
+      'address': '123 Sukhumvit Rd, Bangkok 10110',
+      'price': 350,
+      'image': 'assets/images/car.jpg',
+      'status': 4, // อยู่ในแท็บ Pending เหมือนกัน
+      'fuel': 'EV',
+      'deposit': 2000,
+      'owner': {'name': 'Sompong', 'phone': '081-111-2222', 'rating': 4.3},
+      'booking': {'startDate': '05 Apr 2026', 'endDate': '07 Apr 2026', 'startTime': '09:00', 'endTime': '18:00', 'totalPrice': 5000},
+      // 💡 เพิ่มรูป beforeRentImages มาด้วย เพราะแบบรอคืนต้องโชว์เหมือนหน้า Using
+      'beforeRentImages': ['assets/images/car.jpg', 'assets/images/car.jpg'], 
+      // 💡 เพิ่ม pendingType: 'return' สำหรับรายการที่เพิ่งกดคืนรถไป
+      'pendingType': 'return', 
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    // 💡 2. เอา initialIndex มาตั้งเป็นค่าเริ่มต้นของ TabController
+    _tabController = TabController(
+      length: 5, 
+      vsync: this,
+      initialIndex: widget.initialIndex, // ดึงค่าจากตัวแปรด้านบนมาใช้
+    );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
@@ -155,7 +179,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     super.dispose();
   }
 
-  // Get items for a given tab index
   List<Map<String, dynamic>> _itemsForTab(int tabIndex) {
     return _rentData.where((e) => e['status'] == tabIndex).toList();
   }
@@ -166,13 +189,8 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // ── Header ──
           _buildHeader(context),
-
-          // ── Tab bar ──
           _buildTabBar(),
-
-          // ── Tab content ──
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -186,7 +204,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     );
   }
 
-  // ─────────── Header ───────────
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -222,7 +239,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     );
   }
 
-  // ─────────── Tab Bar ───────────
   Widget _buildTabBar() {
     return Container(
       decoration: const BoxDecoration(
@@ -259,7 +275,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     );
   }
 
-  // ─────────── Tab Content ───────────
   Widget _buildTabContent(int tabIndex) {
     final items = _itemsForTab(tabIndex);
 
@@ -294,235 +309,24 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: GestureDetector(
-            onTap: () async {
-              // 💡 พากดเข้าหน้ารายละเอียด และรอรับค่าสถานะใหม่กลับมา
-              final newStatus = await Navigator.push(
+          // เรียกใช้ HistoryCard ที่เพิ่งแยกออกไป
+          child: HistoryCard(
+            car: items[index],
+            gradientColors: _cardBorderGradients[tabIndex],
+            onTap: () {
+              // กดแล้วให้ไปยังหน้า Detail ที่แยกไว้
+              Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => RenterScheduleDetailPage(booking: items[index]),
+                  builder: (context) => RentHistoryDetailPage(
+                    car: items[index],
+                  ),
                 ),
               );
-              
-              // 💡 ถ้ามีการอัปเดตสถานะ เช่น จาก 0 (Accept) กลายเป็น 1 (Using) หรือ 3 (Cancel)
-              // ให้ทำการ setState อัปเดตค่าในลิสต์หลัก
-              if (newStatus != null && newStatus is int) {
-                setState(() {
-                  // หา index ดั้งเดิมใน _rentData แล้วอัปเดต
-                  int originalIndex = _rentData.indexOf(items[index]);
-                  if (originalIndex != -1) {
-                    _rentData[originalIndex]['status'] = newStatus;
-                  }
-                });
-                // 💡 สลับ Tab ไปหน้าใหม่ให้อัตโนมัติด้วย
-                _tabController.animateTo(newStatus);
-              }
             },
-            child: _buildRentCard(items[index], tabIndex),
           ),
         );
       },
-    );
-  }
-
-  // ─────────── Rent Card ───────────
-  Widget _buildRentCard(Map<String, dynamic> car, int tabIndex) {
-    final gradientColors = _cardBorderGradients[tabIndex];
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors[0].withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: gradientColors[0],
-                width: 4,
-              ),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Title row + rating badge ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        car['name'] as String,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF070E2A),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFC107),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star,
-                              size: 14, color: Colors.white),
-                          const SizedBox(width: 3),
-                          Text(
-                            (car['rating'] as num).toString(),
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Content row: image + details ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Car image
-                    Container(
-                      width: 100,
-                      height: 85,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          car['image'] as String,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _detailRow(
-                              Icons.credit_card,
-                              'License plate: ${car['plate']}'),
-                          const SizedBox(height: 3),
-                          _detailRow(
-                              Icons.directions_car_outlined,
-                              'Model: ${car['model']}'),
-                          const SizedBox(height: 3),
-                          _detailRow(
-                              Icons.category_outlined,
-                              'Type: ${car['type']}'),
-                          const SizedBox(height: 3),
-                          _detailRow(
-                              Icons.location_on_outlined,
-                              car['address'] as String),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Price ',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF070E2A)
-                                      .withValues(alpha: 0.6),
-                                ),
-                              ),
-                              Text(
-                                '${car['price']} ฿ / Hr.',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFFFC107),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Status indicator bar at bottom ──
-              Container(
-                width: double.infinity,
-                height: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: gradientColors,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─────────── Detail Row ───────────
-  Widget _detailRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon,
-            size: 14,
-            color: const Color(0xFF070E2A).withValues(alpha: 0.5)),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF070E2A).withValues(alpha: 0.8),
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }
