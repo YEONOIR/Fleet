@@ -8,11 +8,15 @@ import 'staff/check_vehicle.dart';
 class TakePhotoPage extends StatefulWidget {
   final String vehicleName;
   final bool isStaff; 
-  
+  final String? ownerId; 
+  final String? vehicleId; 
+
   const TakePhotoPage({
     super.key, 
     required this.vehicleName, 
     this.isStaff = false, 
+    this.ownerId, 
+    this.vehicleId, 
   });
 
   @override
@@ -26,7 +30,6 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
   List<File?> afterImages = [null, null, null, null];
   final List<String> photoLabels = ['Front', 'Back', 'Left', 'Right'];
 
-  // 💡 1. ฟังก์ชันดึงรูป (รับพารามิเตอร์ว่าจะเอากล้องหรือแกลเลอรี่)
   Future<void> _pickImage(int index, ImageSource source) async {
     final XFile? photo = await _picker.pickImage(source: source);
     if (photo != null) {
@@ -36,16 +39,12 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // 💡 2. ฟังก์ชันเด้ง Bottom Sheet หรือ เปิดกล้องทันที
   void _showPickerOptions(int index) {
     bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
     
-    // 💡 แก้ไขเงื่อนไขตรงนี้: 
-    // ถ้าเป็น Staff (ตรวจสอบรถ) หรือ Owner (รับรถคืน) ให้บังคับเปิดกล้องถ่ายสดทันที
     if (widget.isStaff || !isNewVehicle) {
       _pickImage(index, ImageSource.camera);
     } 
-    // ถ้าเป็น Owner (เพิ่มรถใหม่ หรือ แก้ไขรูป) ถึงจะยอมให้เลือกแกลเลอรี่ได้
     else {
       showModalBottomSheet(
         context: context,
@@ -58,7 +57,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                 title: const Text('Take Photo', style: TextStyle(fontFamily: 'Poppins')),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(index, ImageSource.camera); // เปิดกล้อง
+                  _pickImage(index, ImageSource.camera); 
                 },
               ),
               ListTile(
@@ -66,7 +65,7 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                 title: const Text('Choose from Gallery', style: TextStyle(fontFamily: 'Poppins')),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickImage(index, ImageSource.gallery); // เปิดอัลบั้ม
+                  _pickImage(index, ImageSource.gallery); 
                 },
               ),
             ],
@@ -76,7 +75,6 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // กดปุ่ม Next เพื่อไปหน้าถัดไป (แยกเงื่อนไขตามการใช้งาน)
   void _goToNextPage() {
     if (afterImages.contains(null)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,9 +96,12 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
         context,
         MaterialPageRoute(
           builder: (context) => CheckVehiclePage(
+            // 💡 แก้ไข: ใช้ค่าจริงที่ส่งมาจากหน้า Request Detail (ห้ามใช้ dummy แล้ว)
+            vehicleId: widget.vehicleId!, 
             vehicleName: widget.vehicleName,
-            // สมมติรูปรถของ Owner ก่อน เดี๋ยวตอนเชื่อม Database จริงค่อยดึงมาใส่
-            ownerImages: const ['assets/images/car.jpg', 'assets/images/car.jpg'], 
+            ownerId: widget.ownerId!, 
+            // ใส่ List ว่างไปก่อนสำหรับรูป Owner เพราะเดี๋ยวเราไปดึงจาก DB ในหน้าโน้นได้ครับ
+            ownerImages: const [], 
             staffImages: completedImages,
           ),
         ),

@@ -19,7 +19,7 @@ class VehicleRequestPage extends StatelessWidget {
           'title': title,
           'message': message,
           'type': type,
-          'target_role': targetRole, // 💡 ระบุ Role เพื่อให้หน้าจอกรองได้ถูกต้อง
+          'target_role': targetRole, 
           'is_read': false,
           'created_at': FieldValue.serverTimestamp(),
         });
@@ -32,6 +32,8 @@ class VehicleRequestPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final String requestType = vehicle['type'] ?? 'Add';
     final String vehicleId = vehicle['id'] ?? ''; 
+    // 💡 ดึง ownerId มาเตรียมไว้ส่งต่อ
+    final String ownerId = vehicle['owner_id'] ?? ''; 
 
     List<dynamic> galleryImages = (vehicle['images'] != null && (vehicle['images'] as List).isNotEmpty)
         ? vehicle['images'] 
@@ -191,9 +193,6 @@ class VehicleRequestPage extends StatelessWidget {
             ),
           ),
 
-          // ==========================================
-          // แถบปุ่ม Action ด้านล่างสุด (Approve / Reject)
-          // ==========================================
           SafeArea(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -226,19 +225,18 @@ class VehicleRequestPage extends StatelessWidget {
                         if (requestType == 'Delete') {
                           _showConfirmApproveDeleteModal(context, vehicleId, vehicle['V Name'] ?? 'this vehicle');
                         } else {
-                          final staffPhotos = await Navigator.push(
+                          // 💡 แก้ไขจุดนี้: ส่ง vehicleId และ ownerId ต่อไปด้วย
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => TakePhotoPage(
                                 vehicleName: vehicle['V Name'] ?? 'New Vehicle',
-                                isStaff: true, 
+                                isStaff: true,
+                                vehicleId: vehicleId, // 👈 ส่ง ID ของรถ
+                                ownerId: ownerId,     // 👈 ส่ง ID ของเจ้าของ
                               ),
                             ),
                           );
-
-                          if (staffPhotos != null && context.mounted) {
-                            _showConfirmApproveAddModal(context, vehicleId, vehicle['V Name'] ?? 'this vehicle');
-                          }
                         }
                       },
                       child: const Text('Approve', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
@@ -324,11 +322,11 @@ class VehicleRequestPage extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
+          title: const Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
-              const SizedBox(width: 10),
-              const Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
             ],
           ),
           content: RichText(
@@ -353,6 +351,9 @@ class VehicleRequestPage extends StatelessWidget {
                   if (doc.exists) {
                     String ownerId = doc['owner_id'];
                     String vName = doc['vehicle_name'] ?? 'Vehicle';
+                    
+                    // ถ้า Reject การ Add ให้เปลี่ยนเป็น Unavailable หรือลบทิ้ง (ตาม Logic ก่อนหน้าคือลบทิ้ง)
+                    // แต่ในหน้านี้ใช้ Logic การอัปเดตสถานะกลับ:
                     String newStatus = requestType == 'Add' ? 'Unavailable' : 'Available';
                     
                     await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
@@ -360,7 +361,6 @@ class VehicleRequestPage extends StatelessWidget {
                       'pending_type': FieldValue.delete(), 
                     });
 
-                    // 💡 ส่งไปหน้า Owner
                     await _sendNotification(
                       ownerId, 
                       'Request Rejected', 
@@ -393,11 +393,11 @@ class VehicleRequestPage extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
+          title: const Row(
             children: [
-              const Icon(Icons.check_circle_outline, color: Color(0xFF4CA0E6), size: 28),
-              const SizedBox(width: 10),
-              const Text('Confirm Delete', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFF4CA0E6))),
+              Icon(Icons.check_circle_outline, color: Color(0xFF4CA0E6), size: 28),
+              SizedBox(width: 10),
+              Text('Confirm Delete', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFF4CA0E6))),
             ],
           ),
           content: Text('Are you sure you want to approve the deletion of "$vehicleName"?\nThis action will remove the vehicle from the system.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black87)),
@@ -414,7 +414,6 @@ class VehicleRequestPage extends StatelessWidget {
                     String ownerId = doc['owner_id'];
                     await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).delete();
 
-                    // 💡 ส่งไปหน้า Owner
                     await _sendNotification(
                       ownerId, 
                       'Vehicle Deleted', 
@@ -430,63 +429,6 @@ class VehicleRequestPage extends StatelessWidget {
                   }
                 } catch (e) {
                   print("Error deleting: $e");
-                }
-              },
-              child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showConfirmApproveAddModal(BuildContext context, String vehicleId, String vehicleName) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, color: Color(0xFF4CA0E6), size: 28),
-              const SizedBox(width: 10),
-              const Text('Confirm Approve', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFF4CA0E6))),
-            ],
-          ),
-          content: Text('Are you sure you want to approve the addition of "$vehicleName"?\nIt will become available for rent immediately.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black87)),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CA0E6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () async {
-                Navigator.pop(context);
-
-                try {
-                  DocumentSnapshot doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
-                  if (doc.exists) {
-                    String ownerId = doc['owner_id'];
-                    await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
-                      'status': 'Available',
-                      'pending_type': FieldValue.delete(),
-                    });
-
-                    // 💡 ส่งไปหน้า Owner
-                    await _sendNotification(
-                      ownerId, 
-                      'Vehicle Approved', 
-                      'Your vehicle "$vehicleName" has been approved and is now available for rent.',
-                      'Vehicle Approved',
-                      'Owner'
-                    );
-                  }
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle approved successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF4CA0E6)));
-                    Navigator.pop(context); 
-                  }
-                } catch (e) {
-                  print("Error approving: $e");
                 }
               },
               child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),

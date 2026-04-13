@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class RejectModal {
-  // ฟังก์ชันหลักสำหรับเรียกใช้
-  static void show(BuildContext context, {required VoidCallback onConfirm}) {
+  // 💡 แก้ไข onConfirm ให้รับค่า String (เหตุผล) กลับไป
+  static void show(BuildContext context, {required Function(String) onConfirm}) {
     TextEditingController reasonController = TextEditingController();
 
     showDialog(
@@ -52,8 +52,8 @@ class RejectModal {
                   );
                   return;
                 }
-                Navigator.pop(dialogContext); // ปิด Modal แรก
-                _showConfirm(context, reasonController.text, onConfirm); // เรียก Modal ยืนยัน
+                Navigator.pop(dialogContext); 
+                _showConfirm(context, reasonController.text, onConfirm); 
               },
               child: const Text('Next', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
             ),
@@ -63,19 +63,19 @@ class RejectModal {
     );
   }
 
-  // ฟังก์ชันย่อยสำหรับยืนยัน (Private Method)
-  static void _showConfirm(BuildContext context, String reason, VoidCallback onConfirm) {
+  // 💡 อัปเดต onConfirm ตรงนี้ด้วย
+  static void _showConfirm(BuildContext context, String reason, Function(String) onConfirm) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
+          title: const Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
-              const SizedBox(width: 10),
-              const Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
             ],
           ),
           content: SingleChildScrollView(
@@ -101,8 +101,8 @@ class RejectModal {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () {
-                Navigator.pop(dialogContext); // ปิด Modal ยืนยัน
-                onConfirm(); // 💡 สั่งให้ทำงานตามที่แต่ละหน้ากำหนดมา
+                Navigator.pop(dialogContext); 
+                onConfirm(reason); // 💡 โยนเหตุผล (reason) กลับไปให้หน้าหลัก!
               },
               child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
             ),

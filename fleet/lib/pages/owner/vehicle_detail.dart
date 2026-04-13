@@ -409,14 +409,20 @@ class VehicleDetailPage extends StatelessWidget {
                 });
 
                 if (context.mounted) {
-                  // 3. แจ้งเตือนและเด้งกลับไปหน้า Home
+                  // 💡 3. แจ้งเตือนข้อความและปรับให้ลอยขึ้นหนี Navbar
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Delete request sent for "$vehicleName".', style: const TextStyle(fontFamily: 'Poppins')),
+                      content: const Text('ส่งคำขอแล้ว', style: TextStyle(fontFamily: 'Poppins', color: Colors.white)),
                       backgroundColor: Colors.black87,
+                      behavior: SnackBarBehavior.floating, // ลอยตัว
+                      margin: const EdgeInsets.only(
+                        bottom: 80, // 💡 ถ้า Navbar คุณสูงหรือเตี้ยกว่านี้ ปรับเลขตรงนี้ได้เลยครับ (ยิ่งเยอะยิ่งลอยสูง)
+                        left: 20,
+                        right: 20,
+                      ),
                     )
                   );
-                  Navigator.pop(context,true); // เด้งกลับหน้าก่อนหน้า
+                  Navigator.pop(context, true); // เด้งกลับหน้าก่อนหน้า
                 }
               } catch (e) {
                 print("Error requesting delete: $e");

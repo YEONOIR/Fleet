@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+
 import '../take_photo.dart'; 
 
 class AddVehiclePage extends StatefulWidget {
@@ -48,7 +51,22 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   @override
   void initState() {
     super.initState();
-    _currentImagePaths = widget.vehicleImagePaths;
+    // 💡 แก้ไข: นำรูปที่ได้จากหน้าก่อนหน้าไปเก็บถาวรทันทีก่อนนำมาใช้
+    if (widget.vehicleImagePaths != null && widget.vehicleImagePaths!.isNotEmpty) {
+      _initPermanentImages(widget.vehicleImagePaths!);
+    } else {
+      _currentImagePaths = [];
+    }
+  }
+
+  // 💡 สร้างฟังก์ชันใหม่สำหรับจัดการรูปภาพตอนเริ่มหน้าจอ
+  Future<void> _initPermanentImages(List<String> tempPaths) async {
+    final permanentPaths = await _saveToPermanentDirectory(tempPaths);
+    if (mounted) {
+      setState(() {
+        _currentImagePaths = permanentPaths;
+      });
+    }
   }
 
   @override
@@ -64,7 +82,36 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   }
 
   // ==========================================
-  // 💡 อัปเดต: เพิ่ม targetRole เข้ามาในฟังก์ชัน
+  // 💡 ฟังก์ชัน Helper สำหรับคัดลอกไฟล์จาก Cache ไปโฟลเดอร์ถาวร
+  // ==========================================
+  Future<List<String>> _saveToPermanentDirectory(List<String> tempPaths) async {
+    List<String> permanentPaths = [];
+    try {
+      final Directory appDocDir = await getApplicationDocumentsDirectory();
+      for (String path in tempPaths) {
+        File tempFile = File(path);
+        if (tempFile.existsSync()) {
+          // 💡 แก้ไข: เพิ่ม Timestamp นำหน้าชื่อไฟล์ป้องกันการเขียนทับกันเอง
+          String uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
+          String fileName = '${uniqueId}_${p.basename(path)}';
+          String newPath = '${appDocDir.path}/$fileName';
+          
+          File permanentFile = await tempFile.copy(newPath);
+          permanentPaths.add(permanentFile.path);
+        } else {
+          // ถ้าไฟล์ไม่อยู่แล้ว ให้ใช้ path เดิมไปก่อน (จะไปดัก Error ตอน Upload แทน)
+          permanentPaths.add(path); 
+        }
+      }
+    } catch (e) {
+      print("Error saving images permanently: $e");
+      return tempPaths; // ถ้ามี Error ก็คืนค่า path เดิมกลับไป
+    }
+    return permanentPaths;
+  }
+
+  // ==========================================
+  // ฟังก์ชัน Helper สำหรับส่ง Notification
   // ==========================================
   Future<void> _sendNotification(String targetUserId, String title, String message, String type, String targetRole) async {
     try {
@@ -73,7 +120,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         'title': title,
         'message': message,
         'type': type,
-        'target_role': targetRole, // 💡 แปะป้ายบอกว่าเป็นของหน้าไหน
+        'target_role': targetRole, 
         'is_read': false,
         'created_at': FieldValue.serverTimestamp(),
       });
@@ -82,22 +129,43 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     }
   }
 
+  // ==========================================
+  // อัปเดตวิธีอัปโหลดรูปภาพใหม่
+  // ==========================================
   Future<String> _uploadImageToImgBB(File imageFile) async {
     const String apiKey = '0a99d5ebe05123a47328ece31b15711c'; 
     final uri = Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey');
-    final request = http.MultipartRequest('POST', uri)
-      ..files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+    
+    try {
+      if (!imageFile.existsSync()) {
+        throw Exception("The image file was lost from cache. Please select the photos again.");
+      }
 
-    final response = await request.send();
-    if (response.statusCode == 200) {
-      final responseData = await response.stream.bytesToString();
-      final jsonResult = json.decode(responseData);
-      return jsonResult['data']['url'];
-    } else {
-      throw Exception('Failed to upload image to ImgBB');
+      final bytes = await imageFile.readAsBytes();
+
+      final request = http.MultipartRequest('POST', uri)
+        ..files.add(http.MultipartFile.fromBytes(
+          'image', 
+          bytes,
+          filename: imageFile.path.split('/').last.isEmpty ? 'image.jpg' : imageFile.path.split('/').last,
+        ));
+
+      final response = await request.send();
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.bytesToString();
+        final jsonResult = json.decode(responseData);
+        return jsonResult['data']['url'];
+      } else {
+        throw Exception('Server rejected the upload. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Upload failed: $e');
     }
   }
 
+  // ==========================================
+  // ฟังก์ชันบันทึกข้อมูลหลัก
+  // ==========================================
   Future<void> _submitVehicle() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -141,13 +209,12 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // 💡 ส่งแจ้งเตือนโดยระบุว่าเป็นของ 'Staff'
       await _sendNotification(
         'staff', 
         'New Vehicle Approval', 
         'A request to add a new ${_brandController.text.trim()} ${_modelController.text.trim()} has been submitted. Please review.', 
         'New Vehicle Request',
-        'Staff' // 💡 ส่งว่าเป็นของ Staff
+        'Staff' 
       );
 
       if (mounted) {
@@ -161,7 +228,13 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding vehicle: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', ''), style: const TextStyle(fontFamily: 'Poppins')),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          )
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -202,7 +275,9 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 MaterialPageRoute(builder: (context) => const TakePhotoPage(vehicleName: 'Edit Photos')),
               );
               if (newPhotos != null && newPhotos is List<String>) {
-                setState(() => _currentImagePaths = newPhotos);
+                // 💡 นำรูปไปเก็บถาวรก่อนนำมาใช้งาน
+                final permanentPhotos = await _saveToPermanentDirectory(newPhotos);
+                setState(() => _currentImagePaths = permanentPhotos);
               }
             },
             icon: const Icon(Icons.edit, size: 16, color: Color.fromRGBO(172, 114, 161, 1.0)),
@@ -237,7 +312,9 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               onTap: () async {
                 final newPhotos = await Navigator.push(context, MaterialPageRoute(builder: (context) => const TakePhotoPage(vehicleName: 'Add Photos')));
                 if (newPhotos != null && newPhotos is List<String>) {
-                  setState(() => _currentImagePaths = newPhotos);
+                  // 💡 นำรูปไปเก็บถาวรก่อนนำมาใช้งาน
+                  final permanentPhotos = await _saveToPermanentDirectory(newPhotos);
+                  setState(() => _currentImagePaths = permanentPhotos);
                 }
               },
               child: Container(

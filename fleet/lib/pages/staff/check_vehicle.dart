@@ -1,19 +1,43 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 // 💡 เปลี่ยน Path นี้ให้ตรงกับที่เก็บไฟล์ reject_modal.dart ของคุณนะ
 import '../../components/reject_modal.dart'; 
+// 💡 1. NEW: Import หน้า Staff Home เข้ามา (อย่าลืมปรับ Path ให้ตรงกับที่เก็บไฟล์ของคุณนะครับ)
+import 'staff_home.dart'; 
 
 class CheckVehiclePage extends StatelessWidget {
+  final String vehicleId; 
   final String vehicleName;
-  final List<String> ownerImages; // รูปภาพจาก Owner (เช่นจาก Asset หรือ Network)
-  final List<File> staffImages;   // รูปภาพที่ Staff เพิ่งถ่ายมา (จากไฟล์ take_photo)
+  final String ownerId; 
+  final List<String> ownerImages; 
+  final List<File> staffImages;   
 
   const CheckVehiclePage({
     super.key,
+    required this.vehicleId, 
     required this.vehicleName,
+    required this.ownerId, 
     required this.ownerImages,
     required this.staffImages,
   });
+
+  // ฟังก์ชันสำหรับยิงแจ้งเตือนเข้า Firestore
+  Future<void> _sendNotificationToOwner(String type, String title, String message) async {
+    try {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'user_id': ownerId, 
+        'target_role': 'Owner', 
+        'type': type, 
+        'title': title,
+        'message': message,
+        'is_read': false,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error sending notification: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +82,9 @@ class CheckVehiclePage extends StatelessWidget {
                         padding: const EdgeInsets.only(right: 15),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            ownerImages.isNotEmpty ? ownerImages[index] : 'assets/images/car.jpg',
-                            fit: BoxFit.cover,
-                            width: 250,
-                          ),
+                          child: ownerImages.isNotEmpty 
+                            ? Image.asset(ownerImages[index], fit: BoxFit.cover, width: 250)
+                            : Image.asset('assets/images/car.jpg', fit: BoxFit.cover, width: 250),
                         ),
                       ),
                     ),
@@ -117,18 +139,39 @@ class CheckVehiclePage extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: () {
-                        // 💡 เรียกใช้ Modal ที่เราหั่นออกมา
                         RejectModal.show(
                           context, 
-                          onConfirm: () {
-                            // pop จนกว่าจะถึงหน้าแรกสุด (หน้า Staff Home)
-                            Navigator.popUntil(context, (route) => route.isFirst);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Request has been rejected.', style: TextStyle(fontFamily: 'Poppins')),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
+                          onConfirm: (String reason) async {
+                            
+                            try {
+                              await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).delete();
+
+                              await _sendNotificationToOwner(
+                                'request rejected', 
+                                'Vehicle Rejected', 
+                                'Your request to add "$vehicleName" has been rejected. Reason: $reason'
+                              );
+
+                              if (!context.mounted) return;
+                              
+                              // แจ้งเตือน SnackBar
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Request rejected and vehicle deleted.', style: TextStyle(fontFamily: 'Poppins')),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+
+                              // 💡 2. NEW: เด้งกลับไปหน้า StaffHomePage ทันที
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (context) => const StaffHomePage()),
+                                (route) => false,
+                              );
+                            } catch (e) {
+                              debugPrint('Error deleting vehicle: $e');
+                            }
+
                           }
                         );
                       },
@@ -144,15 +187,37 @@ class CheckVehiclePage extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
                       ),
-                      onPressed: () {
-                        // pop จนกว่าจะถึงหน้าแรกสุด
-                        Navigator.popUntil(context, (route) => route.isFirst);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Vehicle added successfully!', style: TextStyle(fontFamily: 'Poppins')),
-                            backgroundColor: Color(0xFF4CA0E6),
-                          ),
-                        );
+                      onPressed: () async {
+                        try {
+                          await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
+                            'status': 'approved'
+                          });
+
+                          await _sendNotificationToOwner(
+                            'vehicle approved', 
+                            'Vehicle Approved', 
+                            'Your vehicle "$vehicleName" has been approved and is now listed.'
+                          );
+
+                          if (!context.mounted) return;
+                          
+                          // แจ้งเตือน SnackBar
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Vehicle added successfully!', style: TextStyle(fontFamily: 'Poppins')),
+                              backgroundColor: Color(0xFF4CA0E6),
+                            ),
+                          );
+
+                          // 💡 3. NEW: เด้งกลับไปหน้า StaffHomePage ทันที
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const StaffHomePage()),
+                            (route) => false,
+                          );
+                        } catch (e) {
+                          debugPrint('Error approving vehicle: $e');
+                        }
                       },
                       child: const Text('Confirm Add', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
