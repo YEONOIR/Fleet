@@ -1,6 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../take_photo.dart'; // 💡 อย่าลืม import หน้ากล้องกลับมาด้วย
+import 'package:http/http.dart' as http; 
+import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+
+import '../take_photo.dart'; 
 
 class AddVehiclePage extends StatefulWidget {
   final List<String>? vehicleImagePaths;
@@ -16,41 +21,151 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   String? selectedType;
   String? selectedFuel;
 
-  // 💡 ตัวแปรเก็บรูปล่าสุด (Save State)
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _brandController = TextEditingController();
+  final TextEditingController _modelController = TextEditingController();
+  final TextEditingController _plateController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _depositController = TextEditingController();
+
   List<String>? _currentImagePaths;
+  bool _isLoading = false; 
 
   final List<String> vehicleTypes = [
-    'Sedan (4-Door Car)',
-    'Hatchback (5-Door Car)',
-    'SUV / PPV (Sport Utility)',
-    'MPV (Family Car)',
-    'Pickup Truck (Open Bed)',
-    'Van (Passenger Van)',
-    'Scooter (Automatic)',
-    'Motorcycle (Manual Gear)',
-    'Big Bike (Large Engine)',
-    'Campervan (Motorhome)',
-    'Luxury Car (Premium)',
-    'Others (Unspecified)',
+    'Sedan (4-Door Car)', 'Hatchback (5-Door Car)', 'SUV / PPV (Sport Utility)',
+    'MPV (Family Car)', 'Pickup Truck (Open Bed)', 'Van (Passenger Van)',
+    'Scooter (Automatic)', 'Motorcycle (Manual Gear)', 'Big Bike (Large Engine)',
+    'Campervan (Motorhome)', 'Luxury Car (Premium)', 'Others (Unspecified)',
   ];
 
   final List<String> fuelTypes = [
-    'Gasohol 95 (E10 Blend)',
-    'Gasohol 91 (E10 Blend)',
-    'Gasohol E20 (20% Ethanol)',
-    'Gasohol E85 (85% Ethanol)',
-    'Gasoline 95 (Pure Benzine)',
-    'Diesel (Standard Diesel)',
-    'EV (100% Electric)',
-    'Hybrid / PHEV (Gas & Electric)',
-    'LPG / CNG (Autogas)',
+    'Gasohol 95 (E10 Blend)', 'Gasohol 91 (E10 Blend)', 'Gasohol E20 (20% Ethanol)',
+    'Gasohol E85 (85% Ethanol)', 'Gasoline 95 (Pure Benzine)', 'Diesel (Standard Diesel)',
+    'EV (100% Electric)', 'Hybrid / PHEV (Gas & Electric)', 'LPG / CNG (Autogas)',
   ];
 
   @override
   void initState() {
     super.initState();
-    // 💡 ตอนเปิดหน้ามาครั้งแรก ให้เอารูปที่ส่งมาใส่ใน State ก่อน
     _currentImagePaths = widget.vehicleImagePaths;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _brandController.dispose();
+    _modelController.dispose();
+    _plateController.dispose();
+    _addressController.dispose();
+    _priceController.dispose();
+    _depositController.dispose();
+    super.dispose();
+  }
+
+  // ==========================================
+  // 💡 อัปเดต: เพิ่ม targetRole เข้ามาในฟังก์ชัน
+  // ==========================================
+  Future<void> _sendNotification(String targetUserId, String title, String message, String type, String targetRole) async {
+    try {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'user_id': targetUserId, 
+        'title': title,
+        'message': message,
+        'type': type,
+        'target_role': targetRole, // 💡 แปะป้ายบอกว่าเป็นของหน้าไหน
+        'is_read': false,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("Error sending notification: $e");
+    }
+  }
+
+  Future<String> _uploadImageToImgBB(File imageFile) async {
+    const String apiKey = '0a99d5ebe05123a47328ece31b15711c'; 
+    final uri = Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.bytesToString();
+      final jsonResult = json.decode(responseData);
+      return jsonResult['data']['url'];
+    } else {
+      throw Exception('Failed to upload image to ImgBB');
+    }
+  }
+
+  Future<void> _submitVehicle() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    if (selectedType == null || selectedFuel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select Vehicle Type and Fuel.', style: TextStyle(fontFamily: 'Poppins'))));
+      return;
+    }
+
+    if (_currentImagePaths == null || _currentImagePaths!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add at least one vehicle photo.', style: TextStyle(fontFamily: 'Poppins'))));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("User not logged in");
+
+      List<String> imageUrls = [];
+      for (String path in _currentImagePaths!) {
+        String url = await _uploadImageToImgBB(File(path));
+        imageUrls.add(url);
+      }
+
+      await FirebaseFirestore.instance.collection('vehicles').add({
+        'owner_id': user.uid,
+        'vehicle_name': _nameController.text.trim(),
+        'brand': _brandController.text.trim(),
+        'model': _modelController.text.trim(),
+        'license_plate': _plateController.text.trim(),
+        'vehicle_type': selectedType,
+        'fuel': selectedFuel,
+        'address': _addressController.text.trim(),
+        'price_per_day': double.tryParse(_priceController.text.trim()) ?? 0.0,
+        'deposit': double.tryParse(_depositController.text.trim()) ?? 0.0,
+        'images': imageUrls,
+        'status': 'pending', 
+        'pending_type': 'Add',  
+        'rating': 0.0,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+
+      // 💡 ส่งแจ้งเตือนโดยระบุว่าเป็นของ 'Staff'
+      await _sendNotification(
+        'staff', 
+        'New Vehicle Approval', 
+        'A request to add a new ${_brandController.text.trim()} ${_modelController.text.trim()} has been submitted. Please review.', 
+        'New Vehicle Request',
+        'Staff' // 💡 ส่งว่าเป็นของ Staff
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vehicle added successfully! Pending staff approval.', style: TextStyle(fontFamily: 'Poppins')),
+            backgroundColor: Color(0xFF2E7D6E),
+          ),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding vehicle: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Widget _buildImageSlider() {
@@ -80,40 +195,18 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               }).toList(),
             ),
           ),
-
-          // 💡 ปุ่ม Edit Photos (กดเพื่อไปถ่ายใหม่)
           TextButton.icon(
             onPressed: () async {
-              // เปิดหน้า TakePhoto รอรับค่ากลับมา (await)
               final newPhotos = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const TakePhotoPage(vehicleName: 'Edit Photos'),
-                ),
+                MaterialPageRoute(builder: (context) => const TakePhotoPage(vehicleName: 'Edit Photos')),
               );
-
-              // ถ่ายเสร็จส่งรูปกลับมา อัปเดต State เลย!
               if (newPhotos != null && newPhotos is List<String>) {
-                setState(() {
-                  _currentImagePaths = newPhotos;
-                });
+                setState(() => _currentImagePaths = newPhotos);
               }
             },
-            icon: const Icon(
-              Icons.edit,
-              size: 16,
-              color: Color.fromRGBO(172, 114, 161, 1.0),
-            ),
-            label: const Text(
-              'Edit Photos',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                color: Color.fromRGBO(172, 114, 161, 1.0),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            icon: const Icon(Icons.edit, size: 16, color: Color.fromRGBO(172, 114, 161, 1.0)),
+            label: const Text('Edit Photos', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -128,22 +221,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color.fromRGBO(172, 114, 161, 1.0),
-                Color.fromRGBO(7, 14, 42, 1.0),
-              ],
-            ),
+            gradient: LinearGradient(colors: [Color.fromRGBO(172, 114, 161, 1.0), Color.fromRGBO(7, 14, 42, 1.0)]),
           ),
         ),
-        title: const Text(
-          'Add New Vehicle',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Add New Vehicle', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -152,27 +233,25 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
           if (_currentImagePaths != null && _currentImagePaths!.isNotEmpty)
             _buildImageSlider()
           else
-            Container(
-              width: double.infinity,
-              height: 150,
-              color: Colors.grey[200],
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_a_photo_outlined,
-                    size: 50,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'No images selected',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
+            GestureDetector(
+              onTap: () async {
+                final newPhotos = await Navigator.push(context, MaterialPageRoute(builder: (context) => const TakePhotoPage(vehicleName: 'Add Photos')));
+                if (newPhotos != null && newPhotos is List<String>) {
+                  setState(() => _currentImagePaths = newPhotos);
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                height: 150,
+                color: Colors.grey[200],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_outlined, size: 50, color: Colors.grey.shade400),
+                    const SizedBox(height: 10),
+                    Text('Tap to add photos', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey.shade500)),
+                  ],
+                ),
               ),
             ),
 
@@ -184,89 +263,33 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'General Info',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromRGBO(7, 14, 42, 1.0),
-                      ),
-                    ),
+                    const Text('General Info', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
                     const SizedBox(height: 15),
-                    _buildTextField('Vehicle Name', 'e.g., Sukrit\'s Honda'),
+                    _buildTextField('Vehicle Name', 'e.g., Sukrit\'s Honda', controller: _nameController),
                     Row(
                       children: [
-                        Expanded(
-                          child: _buildTextField('Brand', 'e.g., Honda'),
-                        ),
+                        Expanded(child: _buildTextField('Brand', 'e.g., Honda', controller: _brandController)),
                         const SizedBox(width: 15),
-                        Expanded(
-                          child: _buildTextField('Model', 'e.g., Civic'),
-                        ),
+                        Expanded(child: _buildTextField('Model', 'e.g., Civic', controller: _modelController)),
                       ],
                     ),
-                    _buildTextField('License Plate', 'e.g., AB 1222'),
-
+                    _buildTextField('License Plate', 'e.g., AB 1222', controller: _plateController),
                     const SizedBox(height: 10),
 
-                    // 💡 แก้ Type & Fuel ให้อยู่คนละบรรทัดเรียบร้อย
-                    const Text(
-                      'Type & Fuel',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromRGBO(7, 14, 42, 1.0),
-                      ),
-                    ),
+                    const Text('Type & Fuel', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
                     const SizedBox(height: 15),
-                    _buildDropdown(
-                      'Vehicle Type',
-                      vehicleTypes,
-                      selectedType,
-                      (val) => setState(() => selectedType = val),
-                    ),
-                    _buildDropdown(
-                      'Fuel/Energy',
-                      fuelTypes,
-                      selectedFuel,
-                      (val) => setState(() => selectedFuel = val),
-                    ),
+                    _buildDropdown('Vehicle Type', vehicleTypes, selectedType, (val) => setState(() => selectedType = val)),
+                    _buildDropdown('Fuel/Energy', fuelTypes, selectedFuel, (val) => setState(() => selectedFuel = val)),
                     const SizedBox(height: 10),
 
-                    const Text(
-                      'Location & Pricing',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromRGBO(7, 14, 42, 1.0),
-                      ),
-                    ),
+                    const Text('Location & Pricing', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
                     const SizedBox(height: 15),
-                    _buildTextField(
-                      'Pickup Address',
-                      'Enter full address...',
-                      maxLines: 3,
-                    ),
+                    _buildTextField('Pickup Address', 'Enter full address...', maxLines: 3, controller: _addressController),
                     Row(
                       children: [
-                        Expanded(
-                          child: _buildTextField(
-                            'Price / Hour (฿)',
-                            '0.00',
-                            isNumber: true,
-                          ),
-                        ),
+                        Expanded(child: _buildTextField('Price / Hour (฿)', '0.00', isNumber: true, controller: _priceController)),
                         const SizedBox(width: 15),
-                        Expanded(
-                          child: _buildTextField(
-                            'Deposit (฿)',
-                            '0.00',
-                            isNumber: true,
-                          ),
-                        ),
+                        Expanded(child: _buildTextField('Deposit (฿)', '0.00', isNumber: true, controller: _depositController)),
                       ],
                     ),
                     const SizedBox(height: 30),
@@ -276,56 +299,13 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                       height: 55,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(
-                            172,
-                            114,
-                            161,
-                            1.0,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                          backgroundColor: const Color.fromRGBO(172, 114, 161, 1.0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         ),
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            if (selectedType == null || selectedFuel == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Please select Vehicle Type and Fuel.',
-                                    style: TextStyle(fontFamily: 'Poppins'),
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
-
-                            // 💡 1. เปลี่ยนข้อความ SnackBar แจ้งเตือน และเพิ่มพื้นหลังสีดำให้ดูเท่ขึ้น
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Add vehicle request sent to staff!',
-                                  style: TextStyle(fontFamily: 'Poppins'),
-                                ),
-                                backgroundColor: Colors.black87,
-                              ),
-                            );
-
-                            Navigator.of(
-                              context,
-                            ).popUntil((route) => route.isFirst);
-                          }
-                        },
-                        // 💡 2. เปลี่ยนข้อความบนปุ่ม
-                        child: const Text(
-                          'Send Add Request',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        onPressed: _isLoading ? null : _submitVehicle,
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('Add Vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -339,63 +319,31 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     );
   }
 
-  Widget _buildTextField(
-    String label,
-    String hint, {
-    bool isNumber = false,
-    int maxLines = 1,
-  }) {
+  Widget _buildTextField(String label, String hint, {bool isNumber = false, int maxLines = 1, required TextEditingController controller}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           TextFormField(
+            controller: controller, 
             maxLines: maxLines,
-            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
             style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                color: Colors.grey,
-              ),
+              hintStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey),
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 15,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color.fromRGBO(172, 114, 161, 1.0),
-                  width: 1.5,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.red, width: 1.5),
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color.fromRGBO(172, 114, 161, 1.0), width: 1.5)),
+              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
             ),
             validator: (value) {
-              if (value == null || value.trim().isEmpty)
-                return 'Please enter $label';
+              if (value == null || value.trim().isEmpty) return 'Please enter $label';
               return null;
             },
           ),
@@ -404,73 +352,31 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     );
   }
 
-  Widget _buildDropdown(
-    String label,
-    List<String> items,
-    String? selectedValue,
-    ValueChanged<String?> onChanged,
-  ) {
+  Widget _buildDropdown(String label, List<String> items, String? selectedValue, ValueChanged<String?> onChanged) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            isExpanded: true, // 💡 ตัวนี้ช่วยกันข้อความทะลุจอ
+            isExpanded: true,
             value: selectedValue,
             icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              color: Colors.black,
-            ),
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black),
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 15,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color.fromRGBO(172, 114, 161, 1.0),
-                  width: 1.5,
-                ),
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color.fromRGBO(172, 114, 161, 1.0), width: 1.5)),
             ),
             items: items.map((String item) {
-              return DropdownMenuItem<String>(
-                value: item,
-                child: Text(
-                  item,
-                  style: const TextStyle(fontFamily: 'Poppins'),
-                ),
-              );
+              return DropdownMenuItem<String>(value: item, child: Text(item, style: const TextStyle(fontFamily: 'Poppins')));
             }).toList(),
             onChanged: onChanged,
-            hint: const Text(
-              'Select',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                color: Colors.grey,
-              ),
-            ),
+            hint: const Text('Select', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
           ),
         ],
       ),

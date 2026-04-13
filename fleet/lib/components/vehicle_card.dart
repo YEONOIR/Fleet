@@ -3,16 +3,16 @@ import '../../utils/vehicle_utils.dart';
 
 class VehicleCard extends StatelessWidget {
   final String vName;
-  final double vRate; // float
-  final String imagePath; // สำหรับ Mockup ไปก่อน
+  final double vRate; 
+  final String imagePath; // 💡 รองรับทั้ง asset และ http url
   final String vPlate;
   final String vBrand;
   final String vModel;
   final String vType;
   final String vFuel;
   final String vAddress;
-  final double vPrice; // float
-  final double vDeposit; // float
+  final double vPrice; 
+  final double vDeposit; 
   final String vStatus;
   final Color statusColor;
 
@@ -96,12 +96,23 @@ class VehicleCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    imagePath,
-                    width: 90,
-                    height: 90,
-                    fit: BoxFit.cover,
-                  ),
+                  // 💡 เช็คว่าเป็น URL หรือ Path ในเครื่อง แล้วแสดงรูปให้ถูกวิธี
+                  child: imagePath.startsWith('http') 
+                      ? Image.network(
+                          imagePath,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 90, height: 90, color: Colors.grey[300], child: const Icon(Icons.broken_image, color: Colors.grey)
+                          ),
+                        )
+                      : Image.asset(
+                          imagePath,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                        ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
@@ -119,9 +130,7 @@ class VehicleCard extends StatelessWidget {
                             ),
                           ),
                           Icon(
-                            getFuelIcon(
-                              vFuel,
-                            ), // ใช้ฟังก์ชันเลือกไอคอนแทน v["typeIcon"]
+                            getFuelIcon(vFuel), 
                             size: 30,
                             color: const Color.fromRGBO(7, 14, 42, 1.0),
                           ),

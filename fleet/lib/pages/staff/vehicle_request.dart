@@ -1,62 +1,68 @@
 import 'package:flutter/material.dart';
-import '../../utils/vehicle_utils.dart'; // 💡 อย่าลืมเช็ค path utils ของคุณ
-// 💡 Import หน้า Take Photo เข้ามา (แก้ path และชื่อคลาสให้ตรงกับของคุณนะ)
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import '../../utils/vehicle_utils.dart'; 
 import '../take_photo.dart';
+import '../review_page.dart'; 
 
 class VehicleRequestPage extends StatelessWidget {
   final Map<String, dynamic> vehicle;
 
   const VehicleRequestPage({super.key, required this.vehicle});
 
+  // ==========================================
+  // 💡 ฟังก์ชัน Helper สำหรับส่ง Notification ลง Firebase (แยก Role)
+  // ==========================================
+  Future<void> _sendNotification(String ownerId, String title, String message, String type, String targetRole) async {
+      try {
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'user_id': ownerId,
+          'title': title,
+          'message': message,
+          'type': type,
+          'target_role': targetRole, // 💡 ระบุ Role เพื่อให้หน้าจอกรองได้ถูกต้อง
+          'is_read': false,
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        print("Error sending notification: $e");
+      }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // เช็คประเภทของคำขอ (Add หรือ Delete)
     final String requestType = vehicle['type'] ?? 'Add';
+    final String vehicleId = vehicle['id'] ?? ''; 
+
+    List<dynamic> galleryImages = (vehicle['images'] != null && (vehicle['images'] as List).isNotEmpty)
+        ? vehicle['images'] 
+        : [vehicle['imagePath'] ?? 'assets/images/car.jpg'];
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
-
-      // ==========================================
-      // 1. AppBar
-      // ==========================================
       appBar: AppBar(
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color.fromRGBO(172, 114, 161, 1.0),
-                Color.fromRGBO(7, 14, 42, 1.0),
-              ],
+              colors: [Color.fromRGBO(172, 114, 161, 1.0), Color.fromRGBO(7, 14, 42, 1.0)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
           ),
         ),
-        title: const Text(
-          'Request Details',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Request Details', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
 
       body: Column(
         children: [
-          // ==========================================
-          // 2. ส่วนเนื้อหา (เลื่อนได้)
-          // ==========================================
           Expanded(
-            // 💡 หุ้มด้วย Expanded เสมอเพื่อให้ใช้พื้นที่ที่เหลือทั้งหมด
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image Gallery
+                  // Image Gallery 
                   Container(
                     height: 200,
                     width: double.infinity,
@@ -64,18 +70,24 @@ class VehicleRequestPage extends StatelessWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.all(15),
-                      itemCount: 3,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 15),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            vehicle['imagePath'] ?? 'assets/images/car.jpg',
-                            fit: BoxFit.cover,
-                            width: 250,
+                      itemCount: galleryImages.length, 
+                      itemBuilder: (context, index) {
+                        String imgPath = galleryImages[index].toString();
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: imgPath.startsWith('http') 
+                                ? Image.network(
+                                    imgPath, 
+                                    fit: BoxFit.cover, 
+                                    width: 250,
+                                    errorBuilder: (context, error, stackTrace) => Container(width: 250, color: Colors.grey[400], child: const Icon(Icons.broken_image, color: Colors.grey)),
+                                  )
+                                : Image.asset(imgPath, fit: BoxFit.cover, width: 250),
                           ),
-                        ),
-                      ),
+                        );
+                      }
                     ),
                   ),
 
@@ -83,7 +95,6 @@ class VehicleRequestPage extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        // Info Section
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -92,20 +103,11 @@ class VehicleRequestPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildInfoColumn(
-                                    'License Plate',
-                                    vehicle['V Plate'] ?? '-',
-                                  ),
+                                  _buildInfoColumn('License Plate', vehicle['V Plate'] ?? '-'),
                                   const SizedBox(height: 20),
-                                  _buildInfoColumn(
-                                    'Brand',
-                                    vehicle['V Brand'] ?? '-',
-                                  ),
+                                  _buildInfoColumn('Brand', vehicle['V Brand'] ?? '-'),
                                   const SizedBox(height: 20),
-                                  _buildInfoColumn(
-                                    'Model',
-                                    vehicle['V Model'] ?? '-',
-                                  ),
+                                  _buildInfoColumn('Model', vehicle['V Model'] ?? '-'),
                                 ],
                               ),
                             ),
@@ -114,27 +116,11 @@ class VehicleRequestPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Icon(
-                                    getFuelIcon(vehicle['V Fuel']),
-                                    size: 45,
-                                    color: const Color.fromRGBO(7, 14, 42, 1.0),
-                                  ),
+                                  Icon(getFuelIcon(vehicle['V Fuel']), size: 45, color: const Color.fromRGBO(7, 14, 42, 1.0)),
                                   const SizedBox(height: 5),
                                   Text(
-                                    vehicle['V Fuel']
-                                                .toString()
-                                                .toUpperCase() ==
-                                            'EV'
-                                        ? 'ENERGY'
-                                        : (vehicle['V Fuel'] ?? 'FUEL')
-                                              .toString()
-                                              .toUpperCase(),
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blueGrey,
-                                    ),
+                                    vehicle['V Fuel'].toString().toUpperCase() == 'EV' ? 'ENERGY' : (vehicle['V Fuel'] ?? 'FUEL').toString().toUpperCase(),
+                                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
                                   ),
                                 ],
                               ),
@@ -145,85 +131,26 @@ class VehicleRequestPage extends StatelessWidget {
 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildInfoColumn(
-                              'Vehicle Type',
-                              vehicle['V Type'] ?? '-',
-                            ),
-                            _buildInfoColumn(
-                              'Deposit (฿)',
-                              (vehicle['V Deposit'] ?? 0).toString(),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 25),
-
-                        // Address Section
-                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Address',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                color: Colors.grey,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                vehicle['V Address'] ?? '-',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 25),
-
-                        // Pricing & Rating
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildInfoColumn(
-                              'Price/Hour (฿)',
-                              (vehicle['V Price'] ?? 0).toString(),
-                            ),
+                            _buildInfoColumn('Vehicle Type', vehicle['V Type'] ?? '-'),
                             Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.end, 
                               children: [
-                                const Text(
-                                  'Rating',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    color: Colors.grey,
-                                    fontSize: 13,
-                                  ),
-                                ),
+                                const Text('Rating', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                                const SizedBox(height: 4),
                                 Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 20,
-                                    ),
+                                    const Icon(Icons.star, color: Colors.amber, size: 20),
                                     const SizedBox(width: 5),
-                                    Text(
-                                      (vehicle['V_Rate'] ?? 0.0).toString(),
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Text((vehicle['V_Rate'] ?? 0.0).toString(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 15), 
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews')));
+                                      },
+                                      child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ),
@@ -231,20 +158,30 @@ class VehicleRequestPage extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 25),
 
-                        // Comment Link
-                        const Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            'Comment',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              decoration: TextDecoration.underline,
-                              color: Colors.blueGrey,
-                              fontWeight: FontWeight.w500,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Address', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(15),
+                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                              child: Text(vehicle['V Address'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
                             ),
-                          ),
+                          ],
+                        ),
+                        const SizedBox(height: 25),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInfoColumn('Deposit (฿)', (vehicle['V Deposit'] ?? 0).toString()),
+                            _buildInfoColumn('Price/Hour (฿)', (vehicle['V Price'] ?? 0).toString()),
+                          ],
                         ),
                       ],
                     ),
@@ -255,91 +192,56 @@ class VehicleRequestPage extends StatelessWidget {
           ),
 
           // ==========================================
-          // 3. แถบปุ่ม Action ด้านล่างสุด
+          // แถบปุ่ม Action ด้านล่างสุด (Approve / Reject)
           // ==========================================
           SafeArea(
-            // 💡 หุ้มด้วย SafeArea เพื่อป้องกันขอบจอด้านล่าง (เช่น เส้น Home ของ iPhone)
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
+              decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
               child: Row(
                 children: [
-                  // 🔴 ปุ่ม Reject
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Colors.red.shade400,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
+                        side: BorderSide(color: Colors.red.shade400, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: () {
-                        _showRejectReasonModal(context);
+                        _showRejectReasonModal(context, vehicleId, requestType);
                       },
-                      child: Text(
-                        'Reject',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 16,
-                          color: Colors.red.shade400,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: Text('Reject', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.red.shade400, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 15),
-                  // 🔵 ปุ่ม Approve
-                  // 🔵 ปุ่ม Approve
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4CA0E6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (requestType == 'Delete') {
-                          _showConfirmApproveDeleteModal(
-                            context,
-                            vehicle['V Name'] ?? 'this vehicle',
-                          );
+                          _showConfirmApproveDeleteModal(context, vehicleId, vehicle['V Name'] ?? 'this vehicle');
                         } else {
-                          Navigator.push(
+                          final staffPhotos = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => TakePhotoPage(
                                 vehicleName: vehicle['V Name'] ?? 'New Vehicle',
-                                isStaff: true, // 💡 เพิ่มบรรทัดนี้เข้าไปครับ!
+                                isStaff: true, 
                               ),
                             ),
                           );
+
+                          if (staffPhotos != null && context.mounted) {
+                            _showConfirmApproveAddModal(context, vehicleId, vehicle['V Name'] ?? 'this vehicle');
+                          }
                         }
                       },
-                      child: const Text(
-                        'Approve',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: const Text('Approve', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -351,38 +253,18 @@ class VehicleRequestPage extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // Helper: Widget สำหรับสร้างคอลัมน์ข้อมูล
-  // ==========================================
   Widget _buildInfoColumn(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            color: Colors.grey,
-            fontSize: 13,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        Text(value, style: const TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600)),
       ],
     );
   }
 
-  // ==========================================
-  // 💡 Modal 1: กรอกเหตุผลที่ Reject
-  // ==========================================
-  void _showRejectReasonModal(BuildContext context) {
+  void _showRejectReasonModal(BuildContext context, String vehicleId, String requestType) {
     TextEditingController reasonController = TextEditingController();
 
     showDialog(
@@ -390,104 +272,44 @@ class VehicleRequestPage extends StatelessWidget {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Reject Request',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
-              color: Colors.redAccent,
-            ),
-          ),
-          // 💡 หุ้ม content ด้วย SingleChildScrollView เพื่อไม่ให้พังตอนคีย์บอร์ดเด้งขึ้นมา
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Reject Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Please provide a reason for rejection:',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                ),
+                const Text('Please provide a reason for rejection:', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
                 const SizedBox(height: 15),
                 TextField(
                   controller: reasonController,
                   maxLines: 3,
                   decoration: InputDecoration(
                     hintText: 'Enter reason here...',
-                    hintStyle: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      color: Colors.grey,
-                    ),
+                    hintStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey),
                     filled: true,
                     fillColor: Colors.grey.shade50,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(color: Colors.redAccent),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.redAccent)),
                   ),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () {
                 if (reasonController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Reason cannot be empty',
-                        style: TextStyle(fontFamily: 'Poppins'),
-                      ),
-                      backgroundColor: Colors.black87,
-                    ),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reason cannot be empty', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.black87));
                   return;
                 }
                 Navigator.pop(context);
-                _showConfirmRejectModal(context, reasonController.text);
+                _showConfirmRejectModal(context, vehicleId, requestType, reasonController.text);
               },
-              child: const Text(
-                'Next',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text('Next', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -495,109 +317,68 @@ class VehicleRequestPage extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // 💡 Modal 2: ยืนยันการ Reject อีกครั้ง
-  // ==========================================
-  void _showConfirmRejectModal(BuildContext context, String reason) {
+  void _showConfirmRejectModal(BuildContext context, String vehicleId, String requestType, String reason) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              const Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.redAccent,
-                size: 28,
-              ),
+              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
               const SizedBox(width: 10),
-              const Text(
-                'Confirm Rejection',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  color: Colors.redAccent,
-                ),
-              ),
+              const Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
             ],
           ),
-          content: SingleChildScrollView(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-                children: [
-                  const TextSpan(
-                    text: 'Are you sure you want to reject this request?\n\n',
-                  ),
-                  const TextSpan(
-                    text: 'Reason:\n',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(
-                    text: '"$reason"',
-                    style: const TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.blueGrey,
-                    ),
-                  ),
-                ],
-              ),
+          content: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black87),
+              children: [
+                const TextSpan(text: 'Are you sure you want to reject this request?\n\n'),
+                const TextSpan(text: 'Reason:\n', style: TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: '"$reason"', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.blueGrey)),
+              ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context); 
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Request has been rejected.',
-                      style: TextStyle(fontFamily: 'Poppins'),
-                    ),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    margin: const EdgeInsets.all(20),
-                  ),
-                );
+                try {
+                  DocumentSnapshot doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
+                  if (doc.exists) {
+                    String ownerId = doc['owner_id'];
+                    String vName = doc['vehicle_name'] ?? 'Vehicle';
+                    String newStatus = requestType == 'Add' ? 'Unavailable' : 'Available';
+                    
+                    await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
+                      'status': newStatus,
+                      'pending_type': FieldValue.delete(), 
+                    });
+
+                    // 💡 ส่งไปหน้า Owner
+                    await _sendNotification(
+                      ownerId, 
+                      'Request Rejected', 
+                      'Your request to $requestType "$vName" was rejected. Reason: $reason',
+                      'Request Rejected',
+                      'Owner'
+                    );
+                  }
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request rejected successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.redAccent));
+                    Navigator.pop(context);
+                  }
+                } catch (e) {
+                  print("Error rejecting: $e");
+                }
               },
-              child: const Text(
-                'Confirm',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -605,93 +386,110 @@ class VehicleRequestPage extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // 💡 Modal 3: ยืนยันการ Approve (สำหรับ Type: Delete)
-  // ==========================================
-  void _showConfirmApproveDeleteModal(
-    BuildContext context,
-    String vehicleName,
-  ) {
+  void _showConfirmApproveDeleteModal(BuildContext context, String vehicleId, String vehicleName) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              const Icon(
-                Icons.check_circle_outline,
-                color: Color(0xFF4CA0E6),
-                size: 28,
-              ),
+              const Icon(Icons.check_circle_outline, color: Color(0xFF4CA0E6), size: 28),
               const SizedBox(width: 10),
-              const Text(
-                'Confirm Approve',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF4CA0E6),
-                ),
-              ),
+              const Text('Confirm Delete', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFF4CA0E6))),
             ],
           ),
-          content: Text(
-            'Are you sure you want to approve the deletion of "$vehicleName"?\nThis action will remove the vehicle from the system.',
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              color: Colors.black87,
-            ),
-          ),
+          content: Text('Are you sure you want to approve the deletion of "$vehicleName"?\nThis action will remove the vehicle from the system.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black87)),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CA0E6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(context);
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CA0E6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
                 Navigator.pop(context);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Deletion request has been approved.',
-                      style: TextStyle(fontFamily: 'Poppins'),
-                    ),
-                    backgroundColor: const Color(0xFF4CA0E6),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    margin: const EdgeInsets.all(20),
-                  ),
-                );
+                try {
+                  DocumentSnapshot doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
+                  if (doc.exists) {
+                    String ownerId = doc['owner_id'];
+                    await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).delete();
+
+                    // 💡 ส่งไปหน้า Owner
+                    await _sendNotification(
+                      ownerId, 
+                      'Vehicle Deleted', 
+                      'Your vehicle "$vehicleName" has been successfully deleted from the system.',
+                      'Vehicle Deleted',
+                      'Owner'
+                    );
+                  }
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle deleted successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF4CA0E6)));
+                    Navigator.pop(context); 
+                  }
+                } catch (e) {
+                  print("Error deleting: $e");
+                }
               },
-              child: const Text(
-                'Confirm',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showConfirmApproveAddModal(BuildContext context, String vehicleId, String vehicleName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Color(0xFF4CA0E6), size: 28),
+              const SizedBox(width: 10),
+              const Text('Confirm Approve', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFF4CA0E6))),
+            ],
+          ),
+          content: Text('Are you sure you want to approve the addition of "$vehicleName"?\nIt will become available for rent immediately.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black87)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CA0E6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context);
+
+                try {
+                  DocumentSnapshot doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
+                  if (doc.exists) {
+                    String ownerId = doc['owner_id'];
+                    await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
+                      'status': 'Available',
+                      'pending_type': FieldValue.delete(),
+                    });
+
+                    // 💡 ส่งไปหน้า Owner
+                    await _sendNotification(
+                      ownerId, 
+                      'Vehicle Approved', 
+                      'Your vehicle "$vehicleName" has been approved and is now available for rent.',
+                      'Vehicle Approved',
+                      'Owner'
+                    );
+                  }
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle approved successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF4CA0E6)));
+                    Navigator.pop(context); 
+                  }
+                } catch (e) {
+                  print("Error approving: $e");
+                }
+              },
+              child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );

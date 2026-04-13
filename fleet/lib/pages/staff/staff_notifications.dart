@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../components/notification_card.dart'; // 💡 เช็ค Path ให้ตรงกับโฟลเดอร์ component ของคุณ
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../components/notification_card.dart'; 
 
 class StaffNotificationsPage extends StatefulWidget {
   const StaffNotificationsPage({super.key});
@@ -9,37 +10,35 @@ class StaffNotificationsPage extends StatefulWidget {
 }
 
 class _StaffNotificationsPageState extends State<StaffNotificationsPage> {
-  // 💡 ข้อมูลการแจ้งเตือนเฉพาะฝั่ง Staff
-  List<Map<String, dynamic>> staffNotifications = [
-    {
-      'type': 'New Vehicle Request', 
-      'title': 'New Vehicle Approval', 
-      'message': 'Sukrit requested to add a new Honda Civic e:HEV to the system. Please review.', 
-      'time': '30 mins ago', 
-      'isRead': false
-    },
-    {
-      'type': 'New Vehicle Request', 
-      'title': 'New Vehicle Approval', 
-      'message': 'Pimthida requested to add a Yamaha Grand Filano. Please review.', 
-      'time': '2 hours ago', 
-      'isRead': false
-    },
-    {
-      'type': 'Delete Vehicle Request', 
-      'title': 'Vehicle Deletion Request', 
-      'message': 'Mario Maurer requested to delete Toyota Camry from the system.', 
-      'time': '4 hours ago', 
-      'isRead': true
-    },
-  ];
+  
+  // 💡 ตัวช่วยแปลงเวลา Timestamp จาก Firebase
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return 'Just now';
+    final DateTime date = timestamp.toDate();
+    final Duration diff = DateTime.now().difference(date);
+    
+    if (diff.inDays > 0) return '${diff.inDays} days ago';
+    if (diff.inHours > 0) return '${diff.inHours} hours ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes} mins ago';
+    return 'Just now';
+  }
 
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in staffNotifications) {
-        notification['isRead'] = true;
-      }
+  // 💡 ฟังก์ชันมาร์คว่าอ่านแล้วลง Firebase
+  Future<void> _markAsRead(String docId) async {
+    await FirebaseFirestore.instance.collection('notifications').doc(docId).update({
+      'is_read': true,
     });
+  }
+
+  // 💡 ฟังก์ชันมาร์คว่าอ่านทั้งหมดลง Firebase
+  Future<void> _markAllAsRead(List<QueryDocumentSnapshot> docs) async {
+    final batch = FirebaseFirestore.instance.batch();
+    for (var doc in docs) {
+      if (doc['is_read'] == false) {
+        batch.update(doc.reference, {'is_read': true});
+      }
+    }
+    await batch.commit();
   }
 
   @override
@@ -59,16 +58,20 @@ class _StaffNotificationsPageState extends State<StaffNotificationsPage> {
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _markAllAsRead,
-            child: const Text('Mark all read', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w500)),
-          ),
-          const SizedBox(width: 10),
-        ],
       ),
-      body: staffNotifications.isEmpty
-          ? Center(
+      // 💡 ใช้ StreamBuilder ดึงแจ้งเตือนของ Staff
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('notifications')
+            .where('user_id', isEqualTo: 'staff') // 💡 ดึงเฉพาะแจ้งเตือนที่ส่งหา ID 'staff'
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -77,14 +80,58 @@ class _StaffNotificationsPageState extends State<StaffNotificationsPage> {
                   Text('No pending requests', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.grey.shade500)),
                 ],
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: staffNotifications.length,
-              itemBuilder: (context, index) {
-                return NotificationCard(notification: staffNotifications[index]);
-              },
-            ),
+            );
+          }
+
+          // เรียงให้ข้อมูลใหม่สุดอยู่ด้านบน
+          var docs = snapshot.data!.docs;
+          docs.sort((a, b) {
+            Timestamp? timeA = a['created_at'] as Timestamp?;
+            Timestamp? timeB = b['created_at'] as Timestamp?;
+            if (timeA == null) return 1;
+            if (timeB == null) return -1;
+            return timeB.compareTo(timeA); 
+          });
+
+          return Column(
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => _markAllAsRead(docs),
+                  child: const Text('Mark all read', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    var data = docs[index].data() as Map<String, dynamic>;
+                    
+                    Map<String, dynamic> notifData = {
+                      'title': data['title'],
+                      'message': data['message'],
+                      'type': data['type'],
+                      'is_read': data['is_read'],
+                      'time': _formatTime(data['created_at'] as Timestamp?),
+                    };
+
+                    return NotificationCard(
+                      notification: notifData,
+                      onTap: () {
+                        if (data['is_read'] == false) {
+                          _markAsRead(docs[index].id);
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

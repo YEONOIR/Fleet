@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่มเพื่อคุยกับ Firestore
 import '../../components/renter_info_card.dart';
 import '../../utils/vehicle_utils.dart';
 import '../review_page.dart';
@@ -10,8 +11,12 @@ class VehicleDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ดึงสถานะมาเก็บไว้ในตัวแปรเพื่อให้เช็คง่ายๆ
     final String status = vehicle['V Status'].toString().toLowerCase();
+    
+    // ดึงรูปภาพทั้งหมดที่มีมาเก็บเป็น List ถ้าไม่มีให้เอารูปหน้าปกมาใส่แทน
+    List<dynamic> galleryImages = (vehicle['images'] != null && (vehicle['images'] as List).isNotEmpty)
+        ? vehicle['images'] 
+        : [vehicle['imagePath']];
     
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
@@ -30,13 +35,14 @@ class VehicleDetailPage extends StatelessWidget {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            onPressed: () {
-              // 💡 เรียกใช้ฟังก์ชันโชว์ Modal ยืนยันการลบ
-              _showDeleteConfirmation(context);
-            },
-            icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
-          ),
+          // 💡 ซ่อนปุ่มลบ ถ้าสถานะเป็น Pending อยู่แล้ว (เพราะกำลังรอคิวลบหรือเพิ่มอยู่)
+          if (status != 'pending')
+            IconButton(
+              onPressed: () {
+                _showDeleteConfirmation(context);
+              },
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
+            ),
         ],
       ),
       body: Column(
@@ -46,7 +52,7 @@ class VehicleDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Image Gallery (Horizontal Scroll)
+                  // 1. Image Gallery 
                   Container(
                     height: 200,
                     width: double.infinity,
@@ -54,11 +60,28 @@ class VehicleDetailPage extends StatelessWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.all(15),
-                      itemCount: 3,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 15),
-                        child: Image.asset(vehicle['imagePath'], fit: BoxFit.cover, width: 250),
-                      ),
+                      itemCount: galleryImages.length, 
+                      itemBuilder: (context, index) {
+                        String imgPath = galleryImages[index].toString();
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: imgPath.startsWith('http') 
+                                ? Image.network(
+                                    imgPath, 
+                                    fit: BoxFit.cover, 
+                                    width: 250,
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      width: 250, 
+                                      color: Colors.grey[400], 
+                                      child: const Icon(Icons.broken_image, color: Colors.grey)
+                                    ),
+                                  )
+                                : Image.asset(imgPath, fit: BoxFit.cover, width: 250),
+                          ),
+                        );
+                      }
                     ),
                   ),
 
@@ -114,7 +137,6 @@ class VehicleDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // -- โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (เอา Rating/Comment ขึ้นมาแทน) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,7 +152,7 @@ class VehicleDetailPage extends StatelessWidget {
                                     const Icon(Icons.star, color: Colors.amber, size: 20),
                                     const SizedBox(width: 5),
                                     Text(vehicle['V_Rate'].toString(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
-                                    const SizedBox(width: 15), // ระยะห่างระหว่างเรทติ้งกับปุ่ม Comment
+                                    const SizedBox(width: 15), 
                                     GestureDetector(
                                       onTap: () {
                                         Navigator.push(context, MaterialPageRoute(
@@ -146,7 +168,7 @@ class VehicleDetailPage extends StatelessWidget {
                                           fontFamily: 'Poppins', 
                                           fontSize: 13, 
                                           decoration: TextDecoration.underline, 
-                                          color: Color.fromRGBO(172, 114, 161, 1.0), // สีม่วงเดียวกับ Schedule Detail
+                                          color: Color.fromRGBO(172, 114, 161, 1.0), 
                                           fontWeight: FontWeight.bold
                                         )
                                       ),
@@ -175,7 +197,7 @@ class VehicleDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // 4. Pricing & Deposit (สลับ Deposit ลงมาคู่กับ Price/Hour)
+                        // 4. Pricing & Deposit 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -188,8 +210,8 @@ class VehicleDetailPage extends StatelessWidget {
                         // 5. ส่วนแสดงข้อมูลเพิ่มเติมสำหรับสถานะ PENDING
                         if (status == 'pending') _buildPendingInfo(),
 
-                        // 6. ส่วนแสดงข้อมูลผู้เช่าและรูปภาพสำหรับสถานะ USING เท่านั้น
-                        if (status == 'using') _buildUsingInfo(context),
+                        // 6. ส่วนแสดงข้อมูลผู้เช่าและรูปภาพสำหรับสถานะ USING
+                        if (status == 'using') _buildUsingInfo(context, galleryImages),
                       ],
                     ),
                   ),
@@ -198,7 +220,7 @@ class VehicleDetailPage extends StatelessWidget {
             ),
           ),
 
-          // 7. ส่วนแสดงปุ่ม Action ตามสถานะ (AVAILABLE / UNAVAILABLE)
+          // 7. ส่วนแสดงปุ่ม Action ตามสถานะ 
           if (status == 'available' || status == 'unavailable')
             Padding(
               padding: const EdgeInsets.all(20),
@@ -210,18 +232,16 @@ class VehicleDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 💡 Widget สำหรับสถานะ USING (ข้อมูลผู้เช่า + รูป Before Rent)
+  // Widget สำหรับสถานะ USING (ข้อมูลผู้เช่า + รูป Before Rent)
   // ==========================================
-  Widget _buildUsingInfo(BuildContext context) {
+  Widget _buildUsingInfo(BuildContext context, List<dynamic> galleryImages) {
     final renter = vehicle['renterData'];
-
     if (renter == null) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        
         RenterInfoCard(
           name: renter['name'],
           phone: renter['phone'],
@@ -232,49 +252,44 @@ class VehicleDetailPage extends StatelessWidget {
           endTime: renter['endTime'],
           renterImage: renter['renterImage'],
         ),
-
         const SizedBox(height: 25),
-        // 2. ส่วนของ Total Price (รูปแบบเดียวกับ ScheduleDetailPage)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Total Price', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
             Text(
               '฿ ${renter['totalPrice']}', 
-              style: const TextStyle(
-                fontFamily: 'Poppins', 
-                fontSize: 18, 
-                color: Color.fromRGBO(172, 114, 161, 1.0), // สีม่วง
-                fontWeight: FontWeight.bold
-              ),
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        
         const SizedBox(height: 20),
 
-        // 3. ส่วนของ Pictures before rent (รูปแบบเดียวกับ ScheduleDetailPage)
         const Text('Pictures before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
-
         Container(
           height: 200, 
           color: Colors.grey.shade200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.all(15),
-            itemCount: 3,
+            itemCount: galleryImages.length,
             itemBuilder: (context, index) {
+              String imgPath = galleryImages[index].toString();
               return Container(
                 width: 250, 
                 margin: const EdgeInsets.only(right: 15),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  image: DecorationImage(
-                    image: AssetImage(vehicle['imagePath']), // ดึงจาก path ที่คุณมี
-                    fit: BoxFit.cover,
-                  ),
                 ),
+                clipBehavior: Clip.hardEdge,
+                child: imgPath.startsWith('http')
+                    ? Image.network(
+                        imgPath, 
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Container(color: Colors.grey[400], child: const Icon(Icons.broken_image, color: Colors.grey))
+                      )
+                    : Image.asset(imgPath, fit: BoxFit.cover),
               );
             },
           ),
@@ -283,7 +298,6 @@ class VehicleDetailPage extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับสถานะ Pending
   Widget _buildPendingInfo() {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 30),
@@ -301,7 +315,6 @@ class VehicleDetailPage extends StatelessWidget {
     );
   }
 
-  // Widget สำหรับสร้างปุ่มด้านล่าง
   Widget _buildActionButton(String status) {
     bool isAvailable = status == 'available';
     return SizedBox(
@@ -321,7 +334,6 @@ class VehicleDetailPage extends StatelessWidget {
     );
   }
 
-  // Helper สำหรับสร้างคอลัมน์ข้อมูล
   Widget _buildInfoColumn(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,7 +345,6 @@ class VehicleDetailPage extends StatelessWidget {
     );
   }
 
-  // Helper สำหรับสร้างป้ายสถานะ
   Widget _buildStatusBadge(String status, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
@@ -350,10 +361,11 @@ class VehicleDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 💡 Modal ยืนยันการลบรถ (Delete Confirmation)
+  // 💡 โค้ดยืนยันการส่ง Request เปลี่ยนสถานะเป็น Pending (Delete)
   // ==========================================
   void _showDeleteConfirmation(BuildContext context) {
     String vehicleName = vehicle['V Name'] ?? 'this vehicle'; 
+    String vehicleId = vehicle['id'] ?? ''; // ดึง Document ID เพื่อใช้อัปเดต
 
     showDialog(
       context: context,
@@ -363,11 +375,11 @@ class VehicleDetailPage extends StatelessWidget {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
             const SizedBox(width: 10),
-            const Text('Delete Vehicle', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
+            const Text('Delete Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
           ],
         ),
         content: Text(
-          'Are you sure you want to delete "$vehicleName"?\nThis action cannot be undone.', 
+          'Are you sure you want to request deletion for "$vehicleName"?\nThe vehicle status will be changed to Pending.', 
           style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)
         ),
         actions: [
@@ -380,17 +392,40 @@ class VehicleDetailPage extends StatelessWidget {
               backgroundColor: Colors.redAccent, 
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
             ),
-            onPressed: () {
+            onPressed: () async {
+              // 1. ปิด Dialog
               Navigator.pop(context); 
-              Navigator.pop(context); 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Vehicle "$vehicleName" has been deleted.', style: const TextStyle(fontFamily: 'Poppins')),
-                  backgroundColor: Colors.black87,
-                )
-              );
+
+              if (vehicleId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Vehicle ID not found.')));
+                return;
+              }
+
+              try {
+                // 2. อัปเดตข้อมูลใน Firestore แทนการลบทิ้ง
+                await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
+                  'status': 'pending',
+                  'pending_type': 'Delete', // ระบุเพื่อให้ Staff รู้ว่านี่คือคำขอลบ
+                });
+
+                if (context.mounted) {
+                  // 3. แจ้งเตือนและเด้งกลับไปหน้า Home
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Delete request sent for "$vehicleName".', style: const TextStyle(fontFamily: 'Poppins')),
+                      backgroundColor: Colors.black87,
+                    )
+                  );
+                  Navigator.pop(context,true); // เด้งกลับหน้าก่อนหน้า
+                }
+              } catch (e) {
+                print("Error requesting delete: $e");
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to send request. Please try again.')));
+                }
+              }
             },
-            child: const Text('Delete', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Send Request', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

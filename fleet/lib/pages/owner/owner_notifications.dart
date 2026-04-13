@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../components/notification_card.dart'; 
 
 class OwnerNotificationPage extends StatefulWidget {
@@ -9,47 +11,50 @@ class OwnerNotificationPage extends StatefulWidget {
 }
 
 class _OwnerNotificationPageState extends State<OwnerNotificationPage> {
-  // 💡 ลองเปลี่ยนตัวแปรนี้ดูครับ! ค่าที่ใส่ได้: 'Owner', 'Renter', 'Staff'
-  String currentUserRole = 'Owner'; 
+  
+  // 💡 ตัวช่วยแปลงเวลา Timestamp จาก Firebase เป็นคำว่า "x mins ago"
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return 'Just now';
+    final DateTime date = timestamp.toDate();
+    final Duration diff = DateTime.now().difference(date);
+    
+    if (diff.inDays > 0) return '${diff.inDays} days ago';
+    if (diff.inHours > 0) return '${diff.inHours} hours ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes} mins ago';
+    return 'Just now';
+  }
 
-  // ข้อมูลจำลองของทุก User รวบรวมไว้ที่นี่
-  List<Map<String, dynamic>> allNotifications = [
-    // ================= OWNER =================
-    {'role': 'Owner', 'type': 'Rent Request', 'title': 'New Rent Request', 'message': 'Sukrit wants to rent your Honda Civic.', 'time': '5 mins ago', 'isRead': false},
-    {'role': 'Owner', 'type': 'Hand in Request', 'title': 'Return Request', 'message': 'Pimthida is ready to return the vehicle.', 'time': '1 hour ago', 'isRead': false},
-    {'role': 'Owner', 'type': 'Car in Use', 'title': 'Car Picked Up', 'message': 'The renter has successfully picked up your car.', 'time': 'Yesterday', 'isRead': true},
-    {'role': 'Owner', 'type': 'Return Success', 'title': 'Return Complete', 'message': 'You have successfully received your car back.', 'time': '2 days ago', 'isRead': true},
-
-    // ================= RENTER =================
-    {'role': 'Renter', 'type': 'Top up Success', 'title': 'Top Up Successful', 'message': '฿ 2,000 has been added to your wallet.', 'time': '10 mins ago', 'isRead': false},
-    {'role': 'Renter', 'type': 'Rent Accepted', 'title': 'Booking Confirmed!', 'message': 'Owner has accepted your rent request.', 'time': '2 hours ago', 'isRead': false},
-    {'role': 'Renter', 'type': 'Upcoming Pick-up', 'title': 'Upcoming Pick-up', 'message': 'Don\'t forget to pick up the car tomorrow at 10:00 AM.', 'time': 'Yesterday', 'isRead': true},
-    {'role': 'Renter', 'type': 'Upcoming Return', 'title': 'Time to Return', 'message': 'Your rental ends in 2 hours. Please prepare to return the car.', 'time': 'Yesterday', 'isRead': true},
-
-    // ================= STAFF =================
-    {'role': 'Staff', 'type': 'New Vehicle Request', 'title': 'New Vehicle Approval', 'message': 'Sukrit requested to add a new Honda Civic.', 'time': '30 mins ago', 'isRead': false},
-    {'role': 'Staff', 'type': 'Delete Vehicle Request', 'title': 'Vehicle Deletion', 'message': 'Pimthida requested to delete a vehicle from the system.', 'time': '4 hours ago', 'isRead': true},
-  ];
-
-  void _markAllAsRead(List<Map<String, dynamic>> displayList) {
-    setState(() {
-      for (var notification in displayList) {
-        notification['isRead'] = true;
-      }
+  // 💡 ฟังก์ชันมาร์คว่าอ่านแล้ว
+  Future<void> _markAsRead(String docId) async {
+    await FirebaseFirestore.instance.collection('notifications').doc(docId).update({
+      'is_read': true,
     });
+  }
+
+  // 💡 ฟังก์ชันมาร์คว่าอ่านทั้งหมด
+  Future<void> _markAllAsRead(List<QueryDocumentSnapshot> docs) async {
+    final batch = FirebaseFirestore.instance.batch();
+    for (var doc in docs) {
+      if ((doc.data() as Map<String, dynamic>)['is_read'] == false) {
+        batch.update(doc.reference, {'is_read': true});
+      }
+    }
+    await batch.commit();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 💡 คัดกรองเอาเฉพาะการแจ้งเตือนของ Role ปัจจุบัน
-    List<Map<String, dynamic>> displayNotifications = allNotifications.where((n) => n['role'] == currentUserRole).toList();
+    final User? user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
       appBar: AppBar(
         elevation: 0,
         centerTitle: false,
-        title: const Text('Notifications', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+        title: const Text(
+          'Notifications', 
+          style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)
+        ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -59,32 +64,95 @@ class _OwnerNotificationPageState extends State<OwnerNotificationPage> {
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => _markAllAsRead(displayNotifications),
-            child: const Text('Mark all read', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w500)),
-          ),
-          const SizedBox(width: 10),
-        ],
       ),
-      body: displayNotifications.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 15),
-                  Text('No notifications', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.grey.shade500)),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: displayNotifications.length,
-              itemBuilder: (context, index) {
-                return NotificationCard(notification: displayNotifications[index]);
-              },
-            ),
+      
+      // 💡 ใช้ StreamBuilder เพื่อให้แจ้งเตือนเด้งเข้าแอปแบบ Real-time!
+      body: user == null 
+        ? const Center(child: Text("Please login first", style: TextStyle(fontFamily: 'Poppins')))
+        : StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('notifications')
+              .where('user_id', isEqualTo: user.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)));
+            }
+
+            // 💡 กรองข้อมูลเอาเฉพาะ target_role เป็น 'Owner'
+            final allDocs = snapshot.data?.docs ?? [];
+            final docs = allDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return data['target_role'] == 'Owner';
+            }).toList();
+
+            if (docs.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
+                    const SizedBox(height: 15),
+                    Text('No notifications', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.grey.shade500)),
+                  ],
+                ),
+              );
+            }
+
+            // 💡 เรียงลำดับให้แจ้งเตือนล่าสุดอยู่บนสุด
+            docs.sort((a, b) {
+              Timestamp? timeA = a['created_at'] as Timestamp?;
+              Timestamp? timeB = b['created_at'] as Timestamp?;
+              if (timeA == null) return 1;
+              if (timeB == null) return -1;
+              return timeB.compareTo(timeA); 
+            });
+
+            return Column(
+              children: [
+                // ปุ่ม Mark All As Read
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _markAllAsRead(docs),
+                    child: const Text(
+                      'Mark all read', 
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      var data = docs[index].data() as Map<String, dynamic>;
+                      
+                      // เตรียมข้อมูลโยนเข้า Card
+                      Map<String, dynamic> notifData = {
+                        'title': data['title'],
+                        'message': data['message'],
+                        'type': data['type'],
+                        'is_read': data['is_read'],
+                        'time': _formatTime(data['created_at'] as Timestamp?),
+                      };
+
+                      return NotificationCard(
+                        notification: notifData,
+                        onTap: () {
+                          // พอกดให้เปลี่ยนสถานะเป็น อ่านแล้ว
+                          if (data['is_read'] == false) {
+                            _markAsRead(docs[index].id);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+      ),
     );
   }
 }
