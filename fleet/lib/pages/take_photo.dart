@@ -157,19 +157,47 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     _navigateBasedOnContext(completedImages);
   }
 
+ // take_photo.dart (บรรทัดที่ 166)
+
   void _navigateBasedOnContext(List<File> completedImages) {
     List<String> allImagePaths = completedImages.map((file) => file.path).toList();
     if (widget.isStaff) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => CheckVehiclePage(vehicleId: widget.vehicleId!, vehicleName: widget.vehicleName, ownerId: widget.ownerId!, ownerImages: widget.ownerImages ?? [], staffImages: completedImages)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => CheckVehiclePage(
+                  vehicleId: widget.vehicleId!, 
+                  vehicleName: widget.vehicleName,
+                  ownerId: widget.ownerId!, 
+                  ownerImages: widget.ownerImages ?? [], 
+                  staffImages: completedImages
+              )
+          )
+      );
     } else if (widget.vehicleName == 'Edit Photos') {
       Navigator.pop(context, allImagePaths);
     } else if (widget.vehicleName == 'New Vehicle') {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths)));
+      Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(
+              builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths)
+          )
+      );
+    // take_photo.dart (บรรทัดที่ 166 เป็นต้นไป)
     } else {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => CheckHandInPage(vehicleName: widget.vehicleName, afterImages: completedImages)));
+      Navigator.push(
+          context, 
+          MaterialPageRoute(
+              builder: (context) => CheckHandInPage(
+                  vehicleName: widget.vehicleName, 
+                  afterImages: completedImages,
+                  // 💡 เปลี่ยนจาก ! เป็น ?? '' เพื่อกันไม่ให้แอปแครชเวลาเป็น null
+                  bookingId: widget.bookingId ?? '', 
+              )
+          )
+      );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     // ใช้ Build Method เดิมของคุณได้เลยครับ

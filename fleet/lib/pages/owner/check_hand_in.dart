@@ -1,15 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 1. นำเข้า Firestore
 import 'rate_renter.dart';
 
 class CheckHandInPage extends StatefulWidget {
   final String vehicleName;
-  final List<File> afterImages; // 💡 รับรูป 4 รูปมาจากหน้า TakePhotoPage
+  final List<File> afterImages; 
+  final String bookingId; // 💡 2. เพิ่มตัวแปรรับ Booking ID
 
   const CheckHandInPage({
     super.key, 
     required this.vehicleName, 
     required this.afterImages,
+    required this.bookingId, // 💡 บังคับว่าต้องส่ง Booking ID มาด้วย
   });
   
   @override
@@ -20,15 +23,67 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
   bool hasDefect = false; 
   TextEditingController defectController = TextEditingController();
 
-  List<String> beforeImages = [
-    'assets/images/car.jpg', 
-    'assets/images/car.jpg',
-    'assets/images/car.jpg',
-    'assets/images/car.jpg',
-  ];
+  List<String> beforeImages = []; // 💡 เริ่มต้นด้วย List ว่างๆ
+  bool isLoadingBeforeImages = true; // 💡 สถานะกำลังโหลดรูปภาพ
 
-  // แถบรูปภาพ Before Rent
+  @override
+  void initState() {
+    super.initState();
+    _fetchBeforeImages(); // 💡 3. สั่งโหลดรูปภาพตอนเปิดหน้า
+  }
+
+ // ==========================================
+  // 💡 ฟังก์ชันไปดึง URL รูปภาพจากตาราง bookings
+  // ==========================================
+  Future<void> _fetchBeforeImages() async {
+    // 💡 1. ดักจับค่าว่าง ถ้าไม่มี ID ส่งมา ให้หยุดทำงานทันที ป้องกันแอปแครช!
+    if (widget.bookingId.trim().isEmpty) {
+      print("🚨 แย่แล้ว! หน้า CheckHandIn ไม่ได้รับค่า bookingId จากหน้าก่อนหน้า");
+      setState(() => isLoadingBeforeImages = false);
+      return;
+    }
+
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).get();
+      
+      if (doc.exists && doc.data() != null) {
+        var data = doc.data() as Map<String, dynamic>;
+        List<dynamic> images = data['before_images'] ?? [];
+        
+        setState(() {
+          beforeImages = images.map((e) => e.toString()).toList();
+          isLoadingBeforeImages = false;
+        });
+      } else {
+        print("🚨 ไม่พบเอกสาร Booking ID: ${widget.bookingId}");
+        setState(() => isLoadingBeforeImages = false);
+      }
+    } catch (e) {
+      print("Error fetching before images: $e");
+      setState(() => isLoadingBeforeImages = false);
+    }
+  }
+
+  // 💡 แถบรูปภาพ Before Rent (อัปเดตให้รองรับ URL จากเน็ต)
   Widget _buildBeforeRentImages() {
+    if (isLoadingBeforeImages) {
+      return Container(
+        width: double.infinity,
+        height: 130,
+        color: Colors.grey[200],
+        child: const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))),
+      );
+    }
+
+    if (beforeImages.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 130,
+        color: Colors.grey[200],
+        child: const Center(child: Text('No before rent images found.', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey))),
+      );
+    }
+
     return Container(
       width: double.infinity,
       color: Colors.grey[200], 
@@ -39,7 +94,18 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           children: beforeImages.map((imgPath) {
             return Padding(
               padding: const EdgeInsets.only(right: 15),
-              child: Image.asset(imgPath, width: 100, height: 100, fit: BoxFit.cover),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network( // 💡 เปลี่ยนเป็น Image.network
+                  imgPath, 
+                  width: 100, 
+                  height: 100, 
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 100, height: 100, color: Colors.grey.shade300, child: const Icon(Icons.broken_image, color: Colors.grey)
+                  ),
+                ),
+              ),
             );
           }).toList(),
         ),
@@ -47,7 +113,7 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
     );
   }
 
-  // 💡 แถบรูปภาพ After Rent (แค่ดึงมาแสดงผล ไม่ต้องมีปุ่มกล้องแล้ว)
+  // แถบรูปภาพ After Rent (คงเดิม)
   Widget _buildAfterRentImages() {
     return Container(
       width: double.infinity,
@@ -59,7 +125,10 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           children: widget.afterImages.map((imageFile) {
             return Padding(
               padding: const EdgeInsets.only(right: 15),
-              child: Image.file(imageFile, width: 100, height: 100, fit: BoxFit.cover), // แสดงรูปจาก File
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(imageFile, width: 100, height: 100, fit: BoxFit.cover),
+              ), 
             );
           }).toList(),
         ),
@@ -91,7 +160,7 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Padding(padding: EdgeInsets.all(20.0), child: Text('Before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold))),
-                  _buildBeforeRentImages(),
+                  _buildBeforeRentImages(), // 💡 เรียกใช้ฟังก์ชันที่อัปเดตแล้ว
 
                   const Padding(padding: EdgeInsets.all(20.0), child: Text('After rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold))),
                   _buildAfterRentImages(),

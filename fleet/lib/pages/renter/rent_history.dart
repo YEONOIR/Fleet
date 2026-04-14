@@ -634,10 +634,11 @@ class RentHistoryDetailPage extends StatelessWidget {
                 
                 if (context.mounted) {
                   Navigator.pop(context); // ปิด Loading
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RenterYourRentPage(initialIndex: 3)), 
-                    (route) => false, 
+                 Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    '/renter', 
+                    (route) => false,
+                    arguments: {'mainIndex': 1, 'tabIndex': 3}, // mainIndex 1 = หน้า Your Rent, tabIndex 3 = หน้า Cancel
                   );
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking cancelled successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFFC62828)));
                 }
@@ -719,6 +720,12 @@ class RentHistoryDetailPage extends StatelessWidget {
               } catch (e) {
                 if (context.mounted) {
                   Navigator.pop(context);
+                  Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    '/renter', 
+                    (route) => false,
+                    arguments: {'mainIndex': 1, 'tabIndex': 4}, // mainIndex 1 = หน้า Your Rent, tabIndex 4 = หน้า Pending
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error returning vehicle: $e')));
                 }
               }
