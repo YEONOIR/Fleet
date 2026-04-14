@@ -365,11 +365,11 @@ class VehicleDetailPage extends StatelessWidget {
   // ==========================================
   void _showDeleteConfirmation(BuildContext context) {
     String vehicleName = vehicle['V Name'] ?? 'this vehicle'; 
-    String vehicleId = vehicle['id'] ?? ''; // ดึง Document ID เพื่อใช้อัปเดต
+    String vehicleId = vehicle['id'] ?? ''; 
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog( // ✅ 1. เปลี่ยนชื่อเป็น dialogContext
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -384,7 +384,7 @@ class VehicleDetailPage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext), // ✅ 2. ปิด Modal ด้วย dialogContext
             child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
           ),
           ElevatedButton(
@@ -393,8 +393,8 @@ class VehicleDetailPage extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
             ),
             onPressed: () async {
-              // 1. ปิด Dialog
-              Navigator.pop(context); 
+              // ✅ 3. ปิด Dialog ด้วย dialogContext 
+              Navigator.pop(dialogContext); 
 
               if (vehicleId.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Vehicle ID not found.')));
@@ -402,27 +402,27 @@ class VehicleDetailPage extends StatelessWidget {
               }
 
               try {
-                // 2. อัปเดตข้อมูลใน Firestore แทนการลบทิ้ง
+                // อัปเดตข้อมูลใน Firestore แทนการลบทิ้ง
                 await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
                   'status': 'pending',
-                  'pending_type': 'Delete', // ระบุเพื่อให้ Staff รู้ว่านี่คือคำขอลบ
+                  'pending_type': 'Delete', 
                 });
 
+                // ✅ 4. ตอนนี้ context.mounted จะหมายถึงหน้า VehicleDetailPage จริงๆ แล้ว มันจะทำงานได้สำเร็จ
                 if (context.mounted) {
-                  // 💡 3. แจ้งเตือนข้อความและปรับให้ลอยขึ้นหนี Navbar
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('ส่งคำขอแล้ว', style: TextStyle(fontFamily: 'Poppins', color: Colors.white)),
+                      content: const Text('Send request successfully', style: TextStyle(fontFamily: 'Poppins', color: Colors.white)),
                       backgroundColor: Colors.black87,
-                      behavior: SnackBarBehavior.floating, // ลอยตัว
+                      behavior: SnackBarBehavior.floating, 
                       margin: const EdgeInsets.only(
-                        bottom: 80, // 💡 ถ้า Navbar คุณสูงหรือเตี้ยกว่านี้ ปรับเลขตรงนี้ได้เลยครับ (ยิ่งเยอะยิ่งลอยสูง)
+                        bottom: 80, 
                         left: 20,
                         right: 20,
                       ),
                     )
                   );
-                  Navigator.pop(context, true); // เด้งกลับหน้าก่อนหน้า
+                  Navigator.pop(context, true); // ✅ 5. เด้งกลับไปหน้า Owner Vehicle
                 }
               } catch (e) {
                 print("Error requesting delete: $e");

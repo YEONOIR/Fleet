@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../utils/vehicle_utils.dart'; 
 import '../take_photo.dart';
-import '../review_page.dart';  // 💡 NEW: Import หน้า StaffMainPage
+import '../review_page.dart'; 
 
 class VehicleRequestPage extends StatelessWidget {
   final Map<String, dynamic> vehicle;
@@ -267,7 +267,7 @@ class VehicleRequestPage extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) { // ✅ 1. เปลี่ยนชื่อตรงนี้เป็น dialogContext
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Reject Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
@@ -295,7 +295,7 @@ class VehicleRequestPage extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () {
@@ -303,8 +303,11 @@ class VehicleRequestPage extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reason cannot be empty', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.black87));
                   return;
                 }
-                Navigator.pop(context);
-                _showConfirmRejectModal(context, vehicleId, requestType, reasonController.text);
+                
+                Navigator.pop(dialogContext); // ✅ 2. ปิด Modal แรกด้วย dialogContext
+                
+                // ✅ 3. ส่ง 'context' (ของหน้าหลัก) ไปให้ _showConfirmRejectModal
+                _showConfirmRejectModal(context, vehicleId, requestType, reasonController.text); 
               },
               child: const Text('Next', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
             ),
@@ -343,7 +346,6 @@ class VehicleRequestPage extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
-                // ปิด Modal ยืนยัน
                 Navigator.pop(dialogContext); 
 
                 try {
@@ -371,9 +373,9 @@ class VehicleRequestPage extends StatelessWidget {
                   }
 
                   if (parentContext.mounted) {
-                    // 💡 NEW: ใช้วิธี Pop ย้อนกลับไปจนถึงหน้าแรก (StaffMainPage) 
-                    Navigator.popUntil(parentContext, (route) => route.isFirst);
                     ScaffoldMessenger.of(parentContext).showSnackBar(const SnackBar(content: Text('Request rejected successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.redAccent));
+                    // 💡 NEW: ใช้ pushNamedAndRemoveUntil เรียก Path '/staff' โดยตรง
+                    Navigator.pushNamedAndRemoveUntil(parentContext, '/staff', (route) => false);
                   }
                 } catch (e) {
                   print("Error rejecting: $e");
@@ -407,7 +409,6 @@ class VehicleRequestPage extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CA0E6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
-                // ปิด Modal ยืนยัน
                 Navigator.pop(dialogContext);
 
                 try {
@@ -426,9 +427,9 @@ class VehicleRequestPage extends StatelessWidget {
                   }
 
                   if (parentContext.mounted) {
-                    // 💡 NEW: ใช้วิธี Pop ย้อนกลับไปจนถึงหน้าแรก (StaffMainPage)
-                    Navigator.popUntil(parentContext, (route) => route.isFirst);
                     ScaffoldMessenger.of(parentContext).showSnackBar(const SnackBar(content: Text('Vehicle deleted successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF4CA0E6)));
+                    // 💡 NEW: ใช้ pushNamedAndRemoveUntil เรียก Path '/staff' โดยตรง
+                    Navigator.pushNamedAndRemoveUntil(parentContext, '/staff', (route) => false);
                   }
                 } catch (e) {
                   print("Error deleting: $e");
