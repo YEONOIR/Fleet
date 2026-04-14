@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 // 💡 เปลี่ยน Path นี้ให้ตรงกับที่เก็บไฟล์ reject_modal.dart ของคุณนะ
 import '../../components/reject_modal.dart'; 
-// 💡 1. NEW: Import หน้า Staff Home เข้ามา (อย่าลืมปรับ Path ให้ตรงกับที่เก็บไฟล์ของคุณนะครับ)
-import 'staff_home.dart'; 
+// 💡 นำเข้า StaffMainPage เพื่อรักษาระยะ Navbar
+import 'staff_main.dart'; 
 
 class CheckVehiclePage extends StatelessWidget {
   final String vehicleId; 
@@ -78,15 +78,20 @@ class CheckVehiclePage extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: ownerImages.isEmpty ? 1 : ownerImages.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 15),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: ownerImages.isNotEmpty 
-                            ? Image.asset(ownerImages[index], fit: BoxFit.cover, width: 250)
-                            : Image.asset('assets/images/car.jpg', fit: BoxFit.cover, width: 250),
-                        ),
-                      ),
+                      itemBuilder: (context, index) {
+                        String imgPath = ownerImages.isNotEmpty ? ownerImages[index] : '';
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: ownerImages.isNotEmpty 
+                              ? (imgPath.startsWith('http') 
+                                  ? Image.network(imgPath, fit: BoxFit.cover, width: 250, errorBuilder: (ctx, err, stack) => Container(width: 250, color: Colors.grey[300], child: const Icon(Icons.broken_image)))
+                                  : Image.asset(imgPath, fit: BoxFit.cover, width: 250))
+                              : Image.asset('assets/images/car.jpg', fit: BoxFit.cover, width: 250),
+                          ),
+                        );
+                      }
                     ),
                   ),
                   const SizedBox(height: 35),
@@ -142,8 +147,8 @@ class CheckVehiclePage extends StatelessWidget {
                         RejectModal.show(
                           context, 
                           onConfirm: (String reason) async {
-                            
                             try {
+                              // ลบข้อมูลทิ้งเมื่อกด Reject
                               await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).delete();
 
                               await _sendNotificationToOwner(
@@ -154,7 +159,6 @@ class CheckVehiclePage extends StatelessWidget {
 
                               if (!context.mounted) return;
                               
-                              // แจ้งเตือน SnackBar
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Request rejected and vehicle deleted.', style: TextStyle(fontFamily: 'Poppins')),
@@ -162,16 +166,14 @@ class CheckVehiclePage extends StatelessWidget {
                                 ),
                               );
 
-                              // 💡 2. NEW: เด้งกลับไปหน้า StaffHomePage ทันที
                               Navigator.pushAndRemoveUntil(
                                 context,
-                                MaterialPageRoute(builder: (context) => const StaffHomePage()),
+                                MaterialPageRoute(builder: (context) => const StaffMainPage()),
                                 (route) => false,
                               );
                             } catch (e) {
                               debugPrint('Error deleting vehicle: $e');
                             }
-
                           }
                         );
                       },
@@ -190,7 +192,7 @@ class CheckVehiclePage extends StatelessWidget {
                       onPressed: () async {
                         try {
                           await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
-                            'status': 'approved'
+                            'status': 'available' // 💡 แก้สถานะเป็น available แล้ว
                           });
 
                           await _sendNotificationToOwner(
@@ -201,7 +203,6 @@ class CheckVehiclePage extends StatelessWidget {
 
                           if (!context.mounted) return;
                           
-                          // แจ้งเตือน SnackBar
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Vehicle added successfully!', style: TextStyle(fontFamily: 'Poppins')),
@@ -209,10 +210,9 @@ class CheckVehiclePage extends StatelessWidget {
                             ),
                           );
 
-                          // 💡 3. NEW: เด้งกลับไปหน้า StaffHomePage ทันที
                           Navigator.pushAndRemoveUntil(
                             context,
-                            MaterialPageRoute(builder: (context) => const StaffHomePage()),
+                            MaterialPageRoute(builder: (context) => const StaffMainPage()),
                             (route) => false,
                           );
                         } catch (e) {

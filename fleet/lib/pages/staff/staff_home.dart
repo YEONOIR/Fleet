@@ -30,21 +30,19 @@ class _StaffHomePageState extends State<StaffHomePage> {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('vehicles')
-          .where('status', isEqualTo: 'pending') // ดึงเฉพาะรถที่มีสถานะ pending
+          .where('status', isEqualTo: 'pending') 
           .get();
 
       List<Map<String, dynamic>> fetchedRequests = [];
       for (var doc in snapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
         
-        // ถ้าไม่มีระบุ pending_type ถือว่าเป็นคำขอแบบ Add 
         String pType = data['pending_type'] ?? 'Add';
 
         fetchedRequests.add({
-          'id': doc.id, // เก็บ Document ID เพื่อให้หน้าถัดไปเอาไป อนุมัติ/ปฏิเสธ ได้
+          'id': doc.id,
           'type': pType, 
           
-          // ข้อมูลสำหรับ VehicleInfoCard
           'name': data['vehicle_name'] ?? 'Unknown',
           'rating': (data['rating'] ?? 0.0).toStringAsFixed(1),
           'plate': data['license_plate'] ?? '-',
@@ -54,7 +52,6 @@ class _StaffHomePageState extends State<StaffHomePage> {
           'price': (data['price_per_day'] ?? 0).toString(),
           'image': (data['images'] != null && (data['images'] as List).isNotEmpty) ? data['images'][0] : 'assets/images/car.jpg',
           
-          // ข้อมูลเต็มสำหรับ VehicleDetailPage (ที่ส่งต่อไปให้ VehicleRequestPage)
           'V Name': data['vehicle_name'] ?? 'Unknown',
           'V_Rate': (data['rating'] ?? 0.0).toDouble(),
           'V Plate': data['license_plate'] ?? '-',
@@ -64,8 +61,10 @@ class _StaffHomePageState extends State<StaffHomePage> {
           'V Fuel': data['fuel'] ?? '-',
           'V Address': data['address'] ?? '-',
           'V Price': (data['price_per_day'] ?? 0).toDouble(),
+          // 💡 NEW: ดึงค่า deposit มาด้วย (ถ้าไม่มีให้เป็น 0)
+          'V Deposit': (data['deposit'] ?? 0), 
           'imagePath': (data['images'] != null && (data['images'] as List).isNotEmpty) ? data['images'][0] : 'assets/images/car.jpg',
-          'images': data['images'] ?? [], // ส่งรูปรวมไปด้วย
+          'images': data['images'] ?? [],
         });
       }
 

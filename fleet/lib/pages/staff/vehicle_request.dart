@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../utils/vehicle_utils.dart'; 
 import '../take_photo.dart';
-import '../review_page.dart'; 
+import '../review_page.dart';  // 💡 NEW: Import หน้า StaffMainPage
 
 class VehicleRequestPage extends StatelessWidget {
   final Map<String, dynamic> vehicle;
@@ -32,7 +32,6 @@ class VehicleRequestPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final String requestType = vehicle['type'] ?? 'Add';
     final String vehicleId = vehicle['id'] ?? ''; 
-    // 💡 ดึง ownerId มาเตรียมไว้ส่งต่อ
     final String ownerId = vehicle['owner_id'] ?? ''; 
 
     List<dynamic> galleryImages = (vehicle['images'] != null && (vehicle['images'] as List).isNotEmpty)
@@ -225,15 +224,15 @@ class VehicleRequestPage extends StatelessWidget {
                         if (requestType == 'Delete') {
                           _showConfirmApproveDeleteModal(context, vehicleId, vehicle['V Name'] ?? 'this vehicle');
                         } else {
-                          // 💡 แก้ไขจุดนี้: ส่ง vehicleId และ ownerId ต่อไปด้วย
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => TakePhotoPage(
                                 vehicleName: vehicle['V Name'] ?? 'New Vehicle',
                                 isStaff: true,
-                                vehicleId: vehicleId, // 👈 ส่ง ID ของรถ
-                                ownerId: ownerId,     // 👈 ส่ง ID ของเจ้าของ
+                                vehicleId: vehicleId,
+                                ownerId: ownerId, 
+                                ownerImages: galleryImages.map((e) => e.toString()).toList(),
                               ),
                             ),
                           );
@@ -315,11 +314,11 @@ class VehicleRequestPage extends StatelessWidget {
     );
   }
 
-  void _showConfirmRejectModal(BuildContext context, String vehicleId, String requestType, String reason) {
+  void _showConfirmRejectModal(BuildContext parentContext, String vehicleId, String requestType, String reason) {
     showDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
@@ -340,11 +339,12 @@ class VehicleRequestPage extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
-                Navigator.pop(context); 
+                // ปิด Modal ยืนยัน
+                Navigator.pop(dialogContext); 
 
                 try {
                   DocumentSnapshot doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
@@ -352,14 +352,14 @@ class VehicleRequestPage extends StatelessWidget {
                     String ownerId = doc['owner_id'];
                     String vName = doc['vehicle_name'] ?? 'Vehicle';
                     
-                    // ถ้า Reject การ Add ให้เปลี่ยนเป็น Unavailable หรือลบทิ้ง (ตาม Logic ก่อนหน้าคือลบทิ้ง)
-                    // แต่ในหน้านี้ใช้ Logic การอัปเดตสถานะกลับ:
-                    String newStatus = requestType == 'Add' ? 'Unavailable' : 'Available';
-                    
-                    await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
-                      'status': newStatus,
-                      'pending_type': FieldValue.delete(), 
-                    });
+                    if (requestType == 'Add') {
+                      await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).delete();
+                    } else {
+                      await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
+                        'status': 'available',
+                        'pending_type': FieldValue.delete(), 
+                      });
+                    }
 
                     await _sendNotification(
                       ownerId, 
@@ -370,9 +370,10 @@ class VehicleRequestPage extends StatelessWidget {
                     );
                   }
 
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request rejected successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.redAccent));
-                    Navigator.pop(context);
+                  if (parentContext.mounted) {
+                    // 💡 NEW: ใช้วิธี Pop ย้อนกลับไปจนถึงหน้าแรก (StaffMainPage) 
+                    Navigator.popUntil(parentContext, (route) => route.isFirst);
+                    ScaffoldMessenger.of(parentContext).showSnackBar(const SnackBar(content: Text('Request rejected successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.redAccent));
                   }
                 } catch (e) {
                   print("Error rejecting: $e");
@@ -386,11 +387,11 @@ class VehicleRequestPage extends StatelessWidget {
     );
   }
 
-  void _showConfirmApproveDeleteModal(BuildContext context, String vehicleId, String vehicleName) {
+  void _showConfirmApproveDeleteModal(BuildContext parentContext, String vehicleId, String vehicleName) {
     showDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
@@ -402,11 +403,12 @@ class VehicleRequestPage extends StatelessWidget {
           ),
           content: Text('Are you sure you want to approve the deletion of "$vehicleName"?\nThis action will remove the vehicle from the system.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black87)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CA0E6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               onPressed: () async {
-                Navigator.pop(context);
+                // ปิด Modal ยืนยัน
+                Navigator.pop(dialogContext);
 
                 try {
                   DocumentSnapshot doc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
@@ -423,9 +425,10 @@ class VehicleRequestPage extends StatelessWidget {
                     );
                   }
 
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle deleted successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF4CA0E6)));
-                    Navigator.pop(context); 
+                  if (parentContext.mounted) {
+                    // 💡 NEW: ใช้วิธี Pop ย้อนกลับไปจนถึงหน้าแรก (StaffMainPage)
+                    Navigator.popUntil(parentContext, (route) => route.isFirst);
+                    ScaffoldMessenger.of(parentContext).showSnackBar(const SnackBar(content: Text('Vehicle deleted successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF4CA0E6)));
                   }
                 } catch (e) {
                   print("Error deleting: $e");

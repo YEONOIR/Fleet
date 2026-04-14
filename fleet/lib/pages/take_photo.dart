@@ -10,6 +10,7 @@ class TakePhotoPage extends StatefulWidget {
   final bool isStaff; 
   final String? ownerId; 
   final String? vehicleId; 
+  final List<String>? ownerImages; // 💡 NEW: เพิ่มตัวแปรรับรูป Owner
 
   const TakePhotoPage({
     super.key, 
@@ -17,6 +18,7 @@ class TakePhotoPage extends StatefulWidget {
     this.isStaff = false, 
     this.ownerId, 
     this.vehicleId, 
+    this.ownerImages, // 💡 NEW
   });
 
   @override
@@ -26,7 +28,6 @@ class TakePhotoPage extends StatefulWidget {
 class _TakePhotoPageState extends State<TakePhotoPage> {
   final ImagePicker _picker = ImagePicker();
   
-  // เก็บรูปทั้ง 4 มุม (หน้า, หลัง, ซ้าย, ขวา)
   List<File?> afterImages = [null, null, null, null];
   final List<String> photoLabels = ['Front', 'Back', 'Left', 'Right'];
 
@@ -86,22 +87,16 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     List<File> completedImages = afterImages.whereType<File>().toList();
     List<String> allImagePaths = completedImages.map((file) => file.path).toList();
 
-    // ==========================================
-    // 💡 การนำทาง (Navigation) แบบแยกเงื่อนไข
-    // ==========================================
-
     // 1. โหมด Staff ตรวจสอบรถ
     if (widget.isStaff) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CheckVehiclePage(
-            // 💡 แก้ไข: ใช้ค่าจริงที่ส่งมาจากหน้า Request Detail (ห้ามใช้ dummy แล้ว)
             vehicleId: widget.vehicleId!, 
             vehicleName: widget.vehicleName,
             ownerId: widget.ownerId!, 
-            // ใส่ List ว่างไปก่อนสำหรับรูป Owner เพราะเดี๋ยวเราไปดึงจาก DB ในหน้าโน้นได้ครับ
-            ownerImages: const [], 
+            ownerImages: widget.ownerImages ?? [], // 💡 NEW: ส่งรูป Owner ต่อไปเลย!
             staffImages: completedImages,
           ),
         ),
@@ -176,7 +171,6 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // สร้าง Grid 2x2 สำหรับถ่ายรูป 4 มุม
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -218,7 +212,6 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
             ),
           ),
           
-          // ปุ่ม Next
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: SafeArea(
