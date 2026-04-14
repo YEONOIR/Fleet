@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-// 💡 เช็ค path ของไฟล์ search_calendar.dart และ time_selector.dart ให้ตรงกับโปรเจคของคุณนะครับ
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../components/search_calendar.dart'; 
 import '../../components/time_selector.dart';
+import '../../utils/vehicle_utils.dart'; 
 import 'rent_payment.dart';
 import '../review_page.dart';
 
@@ -12,13 +13,12 @@ class VehicleRentDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 เปลี่ยนสีพื้นหลังให้เหมือนหน้า Vehicle Detail เพื่อความคลุมโทน
+    List<dynamic> galleryImages = (vehicleData['images'] != null && (vehicleData['images'] as List).isNotEmpty)
+        ? vehicleData['images'] 
+        : [vehicleData['imagePath'] ?? 'assets/images/car.jpg'];
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
-      
-      // ==========================================
-      // 1. AppBar (Gradient + Title)
-      // ==========================================
       appBar: AppBar(
         elevation: 0,
         flexibleSpace: Container(
@@ -31,7 +31,7 @@ class VehicleRentDetailPage extends StatelessWidget {
           ),
         ),
         title: Text(
-          vehicleData['name'] ?? 'Vehicle Detail', 
+          vehicleData['V Name'] ?? 'Vehicle Detail', 
           style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)
         ),
         centerTitle: true,
@@ -46,7 +46,7 @@ class VehicleRentDetailPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ==========================================
-                  // 2. Image Gallery (รูปแบบใหม่ใหญ่ขึ้น)
+                  // Image Gallery 
                   // ==========================================
                   Container(
                     height: 200,
@@ -55,33 +55,30 @@ class VehicleRentDetailPage extends StatelessWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.all(15),
-                      itemCount: 3,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 15),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            vehicleData['image'] ?? 'assets/images/car.jpg', 
-                            fit: BoxFit.cover, 
-                            width: 250,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 250, color: Colors.grey.shade200, child: const Icon(Icons.directions_car, color: Colors.grey),
-                            ),
+                      itemCount: galleryImages.length,
+                      itemBuilder: (context, index) {
+                        String imgPath = galleryImages[index].toString();
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: imgPath.startsWith('http')
+                                ? Image.network(imgPath, fit: BoxFit.cover, width: 250, errorBuilder: (ctx, err, stack) => Container(width: 250, color: Colors.grey.shade200, child: const Icon(Icons.broken_image, color: Colors.grey)))
+                                : Image.asset(imgPath, fit: BoxFit.cover, width: 250, errorBuilder: (ctx, err, stack) => Container(width: 250, color: Colors.grey.shade200, child: const Icon(Icons.directions_car, color: Colors.grey))),
                           ),
-                        ),
-                      ),
+                        );
+                      }
                     ),
                   ),
 
                   // ==========================================
-                  // 3. Information Details (UI แบบใหม่)
+                  // Information Details 
                   // ==========================================
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // -- โซนข้อมูลรถ และ ไอคอนพลังงาน --
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -90,11 +87,11 @@ class VehicleRentDetailPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildInfoColumn('License Plate', vehicleData['plate'] ?? '-'),
+                                  _buildInfoColumn('License Plate', vehicleData['V Plate'] ?? '-'),
                                   const SizedBox(height: 20),
-                                  _buildInfoColumn('Brand', vehicleData['brand'] ?? vehicleData['name'].toString().split(' ').last),
+                                  _buildInfoColumn('Brand', vehicleData['V Brand'] ?? '-'),
                                   const SizedBox(height: 20),
-                                  _buildInfoColumn('Model', vehicleData['model'] ?? '-'),
+                                  _buildInfoColumn('Model', vehicleData['V Model'] ?? '-'),
                                 ],
                               ),
                             ),
@@ -103,9 +100,12 @@ class VehicleRentDetailPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  const Icon(Icons.electric_car, size: 45, color: Color.fromRGBO(7, 14, 42, 1.0)),
+                                  Icon(getFuelIcon(vehicleData['V Fuel'] ?? ''), size: 45, color: const Color.fromRGBO(7, 14, 42, 1.0)),
                                   const SizedBox(height: 5),
-                                  const Text('ENERGY', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                                  Text(
+                                    vehicleData['V Fuel']?.toString().toUpperCase() == 'EV' ? 'ENERGY' : (vehicleData['V Fuel'] ?? 'FUEL').toString().toUpperCase(),
+                                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)
+                                  ),
                                   const SizedBox(height: 15),
                                   _buildStatusBadge('Available', const Color(0xFF6DDA75)),
                                 ],
@@ -115,12 +115,11 @@ class VehicleRentDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // -- โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (ปรับใหม่) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildInfoColumn('Vehicle Type', vehicleData['vType'] ?? '-'),
+                            _buildInfoColumn('Vehicle Type', vehicleData['V Type'] ?? '-'),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -130,27 +129,13 @@ class VehicleRentDetailPage extends StatelessWidget {
                                   children: [
                                     const Icon(Icons.star, color: Colors.amber, size: 20),
                                     const SizedBox(width: 5),
-                                    Text(vehicleData['rating']?.toString() ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
-                                    const SizedBox(width: 15), // ระยะห่างระหว่างเรทติ้งกับปุ่ม Comment
+                                    Text(vehicleData['V_Rate']?.toString() ?? '0.0', style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 15), 
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(
-                                          builder: (context) => const FleetEntityReviewPage(
-                                            isCar: true, 
-                                            entityName: 'Vehicle Reviews'
-                                          )
-                                        ));
+                                        Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews')));
                                       },
-                                      child: const Text(
-                                        'Comment', 
-                                        style: TextStyle(
-                                          fontFamily: 'Poppins', 
-                                          fontSize: 13, 
-                                          decoration: TextDecoration.underline, 
-                                          color: Color.fromRGBO(172, 114, 161, 1.0), // 💡 สีม่วงตามที่ต้องการ
-                                          fontWeight: FontWeight.bold
-                                        )
-                                      ),
+                                      child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ),
@@ -160,7 +145,6 @@ class VehicleRentDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // -- โซนที่อยู่ (Address) --
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -170,18 +154,17 @@ class VehicleRentDetailPage extends StatelessWidget {
                               width: double.infinity,
                               padding: const EdgeInsets.all(15),
                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                              child: Text(vehicleData['address'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                              child: Text(vehicleData['V Address'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
                             ),
                           ],
                         ),
                         const SizedBox(height: 25),
 
-                        // -- โซนมัดจำ และ ราคา (ย้ายมาอยู่คู่กัน) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildInfoColumn('Deposit (฿)', vehicleData['deposit']?.toString() ?? '1000'),
-                            _buildInfoColumn('Price/Hour (฿)', vehicleData['price']?.toString() ?? '-'),
+                            _buildInfoColumn('Deposit (฿)', vehicleData['V Deposit']?.toString() ?? '0'),
+                            _buildInfoColumn('Price/Hour (฿)', vehicleData['V Price']?.toString() ?? '-'),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -194,7 +177,7 @@ class VehicleRentDetailPage extends StatelessWidget {
           ),
 
           // ==========================================
-          // 4. Bottom Rent Button (คงไว้เหมือนเดิม)
+          // Bottom Rent Button
           // ==========================================
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -211,10 +194,7 @@ class VehicleRentDetailPage extends StatelessWidget {
                 onPressed: () {
                   _showRentCalendarModal(context);
                 },
-                child: const Text(
-                  'Rent', 
-                  style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
-                ),
+                child: const Text('Rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ),
@@ -223,9 +203,6 @@ class VehicleRentDetailPage extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // 💡 Helper Widgets 
-  // ==========================================
   Widget _buildInfoColumn(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +230,7 @@ class VehicleRentDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 💡 Modal เลือกวันเช่าและเวลา (คงเดิมไม่แตะต้อง)
+  // Modal เลือกวันเช่าและเวลา พร้อมเช็คคิว
   // ==========================================
   void _showRentCalendarModal(BuildContext context) {
     final DateTime now = DateTime.now();
@@ -333,30 +310,171 @@ class VehicleRentDetailPage extends StatelessWidget {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             elevation: 0,
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             if (startDate != null) {
                               DateTime finalStartDate = startDate!;
                               DateTime finalEndDate = endDate ?? finalStartDate;
                               TimeOfDay finalStartTime = startTime ?? const TimeOfDay(hour: 0, minute: 0);
                               TimeOfDay finalEndTime = endTime ?? const TimeOfDay(hour: 0, minute: 0);
 
-                              Navigator.pop(context); 
-                              
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RentPaymentPage(
-                                    vehicleData: vehicleData,
-                                    startDate: finalStartDate,
-                                    endDate: finalEndDate,
-                                    startTime: finalStartTime,
-                                    endTime: finalEndTime,
+                              // 💡 1. รวมวันที่และเวลาเพื่อใช้เปรียบเทียบ
+                              final newStart = DateTime(finalStartDate.year, finalStartDate.month, finalStartDate.day, finalStartTime.hour, finalStartTime.minute);
+                              final newEnd = DateTime(finalEndDate.year, finalEndDate.month, finalEndDate.day, finalEndTime.hour, finalEndTime.minute);
+
+                              // 💡 2. ดักจับเวลาผิดพลาดเป็น Popup (เวลาคืนรถต้องมากกว่าเวลารับรถเสมอ)
+                              if (newEnd.isBefore(newStart) || newEnd.isAtSameMomentAs(newStart)) {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext dialogContext) => AlertDialog(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    title: const Row(
+                                      children: [
+                                        Icon(Icons.access_time, color: Colors.redAccent, size: 28),
+                                        SizedBox(width: 10),
+                                        Text('Invalid Time', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent, fontSize: 18)),
+                                      ],
+                                    ),
+                                    content: const Text(
+                                      'End time must be after start time.\nPlease adjust your rental period.',
+                                      style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+                                    ),
+                                    actions: [
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                                          onPressed: () => Navigator.pop(dialogContext),
+                                          child: const Text('OK', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
+                                );
+                                return;
+                              }
+
+                              // แสดงวงแหวนโหลดขณะเช็คคิว
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFFAC72A1))),
                               );
+
+                              try {
+                                String vId = vehicleData['id'] ?? '';
+                                bool isOverlap = false;
+
+                                // 💡 3. ดึงคิวทั้งหมดของรถคันนี้ ที่สถานะเป็นกำลังรอ/กำลังใช้งาน
+                                QuerySnapshot bookingsSnap = await FirebaseFirestore.instance
+                                    .collection('bookings')
+                                    .where('vehicle_id', isEqualTo: vId)
+                                    .where('status', whereIn: ['pending', 'accept', 'accepted', 'using']) 
+                                    .get();
+
+                                // 💡 4. วนลูปเช็คว่าเวลาไปทับซ้อนกับใครไหม
+                                for(var doc in bookingsSnap.docs) {
+                                  var data = doc.data() as Map<String, dynamic>;
+                                  Timestamp? existingStartTs = data['start_time'];
+                                  Timestamp? existingEndTs = data['end_time'];
+
+                                  if (existingStartTs != null && existingEndTs != null) {
+                                    DateTime existingStart = existingStartTs.toDate();
+                                    DateTime existingEnd = existingEndTs.toDate();
+
+                                    // สูตรเช็ค Overlap: (เริ่มใหม่ < จบเก่า) AND (จบใหม่ > เริ่มเก่า)
+                                    if (newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)) {
+                                      isOverlap = true;
+                                      break; 
+                                    }
+                                  }
+                                }
+
+                                Navigator.pop(context); // ปิดหน้าโหลด
+
+                                // 💡 5. ถ้าคิวชนกัน ให้เด้งเป็น Popup กลางจอแทน เพื่อไม่ให้ Modal ปฏิทินบัง
+                                if (isOverlap) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext dialogContext) => AlertDialog(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      title: const Row(
+                                        children: [
+                                          Icon(Icons.event_busy, color: Colors.redAccent, size: 28),
+                                          SizedBox(width: 10),
+                                          Text('Time Unavailable', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent, fontSize: 18)),
+                                        ],
+                                      ),
+                                      content: const Text(
+                                        'This vehicle is already booked for the selected time.\nPlease choose another time.',
+                                        style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+                                      ),
+                                      actions: [
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.redAccent,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                            onPressed: () => Navigator.pop(dialogContext), // ปิดแค่ Dialog
+                                            child: const Text('OK', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  return; // หยุดการทำงาน ไม่ไปหน้าถัดไป
+                                }
+
+                                // 💡 6. ถ้าคิวว่างผ่านฉลุย ปิด Modal ปฏิทินและไปหน้าจ่ายเงิน
+                                Navigator.pop(context); 
+                                
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RentPaymentPage(
+                                      vehicleData: vehicleData,
+                                      startDate: finalStartDate,
+                                      endDate: finalEndDate,
+                                      startTime: finalStartTime,
+                                      endTime: finalEndTime,
+                                    ),
+                                  ),
+                                );
+
+                              } catch (e) {
+                                Navigator.pop(context); // ปิดหน้าโหลด
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error checking availability: $e')));
+                              }
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please select a Date.')),
+                              // 💡 เปลี่ยนแจ้งเตือนไม่ได้เลือกวันเป็น Popup
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext dialogContext) => AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  title: const Row(
+                                    children: [
+                                      Icon(Icons.calendar_today, color: Colors.orange, size: 28),
+                                      SizedBox(width: 10),
+                                      Text('Date Required', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 18)),
+                                    ],
+                                  ),
+                                  content: const Text(
+                                    'Please select a start date for your rental period.',
+                                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
+                                  ),
+                                  actions: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                                        onPressed: () => Navigator.pop(dialogContext),
+                                        child: const Text('OK', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               );
                             }
                           },

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'renter_your_rent.dart'; // 💡 อย่าลืม import ให้ตรง path
-import '../review_page.dart'; // 💡 อย่าลืม import หน้า ReviewPage ด้วยนะครับ
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 นำเข้า Firestore
+import 'package:firebase_auth/firebase_auth.dart'; // 💡 นำเข้า Auth
+import 'renter_your_rent.dart'; 
+import '../review_page.dart'; 
 
 class RentHistoryDetailPage extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -13,8 +15,12 @@ class RentHistoryDetailPage extends StatelessWidget {
     final String statusString = _getStatusString(statusIndex);
     final Color statusColor = _getStatusColor(statusIndex);
     
-    // 💡 ดึงค่า pendingType ออกมาเช็ค (ถ้าไม่มีให้ถือว่าเป็น 'rent' ไว้ก่อน)
     final String pendingType = car['pendingType'] ?? 'rent';
+
+    // 💡 ดึงรูปภาพทั้งหมดมาเรียง ถ้าไม่มีให้ใช้รูปหน้าปกเดี่ยวๆ
+    List<dynamic> galleryImages = (car['images'] != null && (car['images'] as List).isNotEmpty)
+        ? car['images'] 
+        : [car['image'] ?? 'assets/images/car.jpg'];
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
@@ -23,23 +29,13 @@ class RentHistoryDetailPage extends StatelessWidget {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color.fromRGBO(172, 114, 161, 1.0),
-                Color.fromRGBO(7, 14, 42, 1.0)
-              ],
+              colors: [Color.fromRGBO(172, 114, 161, 1.0), Color.fromRGBO(7, 14, 42, 1.0)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
           ),
         ),
-        title: Text(
-          car['name'] as String,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(car['name'] as String, style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -58,23 +54,19 @@ class RentHistoryDetailPage extends StatelessWidget {
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                      itemCount: 3, 
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 15),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            car['image'] ?? 'assets/images/car.jpg', 
-                            width: 130,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 130, 
-                              color: Colors.grey.shade300, 
-                              child: const Icon(Icons.directions_car, color: Colors.grey),
-                            ),
+                      itemCount: galleryImages.length, // 💡 โชว์ให้ครบทุกรูป
+                      itemBuilder: (context, index) {
+                        String imgPath = galleryImages[index].toString();
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: imgPath.startsWith('http')
+                              ? Image.network(imgPath, width: 130, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(width: 130, color: Colors.grey.shade300, child: const Icon(Icons.broken_image, color: Colors.grey)))
+                              : Image.asset(imgPath, width: 130, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(width: 130, color: Colors.grey.shade300, child: const Icon(Icons.directions_car, color: Colors.grey))),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
 
@@ -105,23 +97,14 @@ class RentHistoryDetailPage extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Icon(
-                                    car['fuel'].toString().toUpperCase() == 'EV'
-                                        ? Icons.electric_car
-                                        : Icons.local_gas_station,
+                                    car['fuel'].toString().toUpperCase() == 'EV' ? Icons.electric_car : Icons.local_gas_station,
                                     size: 45,
                                     color: const Color.fromRGBO(7, 14, 42, 1.0),
                                   ),
                                   const SizedBox(height: 5),
                                   Text(
-                                    car['fuel'].toString().toUpperCase() == 'EV'
-                                        ? 'ENERGY'
-                                        : car['fuel'].toString(),
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blueGrey,
-                                    ),
+                                    car['fuel'].toString().toUpperCase() == 'EV' ? 'ENERGY' : car['fuel'].toString(),
+                                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
                                   ),
                                   const SizedBox(height: 15),
                                   _buildStatusBadge(statusString, statusColor),
@@ -132,7 +115,6 @@ class RentHistoryDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // -- 💡 โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (สลับที่ใหม่) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,30 +129,13 @@ class RentHistoryDetailPage extends StatelessWidget {
                                   children: [
                                     const Icon(Icons.star, color: Colors.amber, size: 20),
                                     const SizedBox(width: 5),
-                                    Text(
-                                      car['rating'].toString(),
-                                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold),
-                                    ),
+                                    Text(car['rating'].toString(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
                                     const SizedBox(width: 15),
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(
-                                          builder: (context) => const FleetEntityReviewPage(
-                                            isCar: true, 
-                                            entityName: 'Vehicle Reviews'
-                                          )
-                                        ));
+                                        Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews')));
                                       },
-                                      child: const Text(
-                                        'Comment', 
-                                        style: TextStyle(
-                                          fontFamily: 'Poppins', 
-                                          fontSize: 13, 
-                                          decoration: TextDecoration.underline, 
-                                          color: Color.fromRGBO(172, 114, 161, 1.0), // 💡 สีม่วงตามต้องการ
-                                          fontWeight: FontWeight.bold
-                                        )
-                                      ),
+                                      child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ),
@@ -180,7 +145,6 @@ class RentHistoryDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // 3. Address Section
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -196,31 +160,20 @@ class RentHistoryDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 25),
 
-                        // -- 💡 โซนมัดจำ และ ราคา (ย้ายมาคู่กัน) --
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _buildInfoColumn('Deposit (฿)', car['deposit'].toString()),
-                            _buildInfoColumn('Price/Hour (฿)', car['price'].toString()),
+                            _buildInfoColumn('Total Price (฿)', car['price'].toString()), // 💡 เปลี่ยนคำอธิบายให้ชัดเจนขึ้น
                           ],
                         ),
                         const SizedBox(height: 10),
 
                         const Divider(height: 40),
 
-                        if (statusString == 'CANCEL')
-                          _buildCancelReason()
-                        else
-                          _buildBookingInfo(),
-
-                        // 💡 โชว์รูปภาพ Before Rent ถ้าเป็น USING, COMPLETE, หรือ PENDING(แบบคืนรถ)
-                        if (statusString == 'USING' || statusString == 'COMPLETE' || (statusString == 'PENDING' && pendingType == 'return'))
-                          _buildBeforeRentImages(),
-                        
-                        if (statusString == 'COMPLETE')
-                          _buildDefectInfo(),
-                          
-                        // 💡 ส่ง pendingType เข้าไปเช็คในฟังก์ชัน PendingInfo
+                        if (statusString == 'CANCEL') _buildCancelReason() else _buildBookingInfo(),
+                        if (statusString == 'USING' || statusString == 'COMPLETE' || (statusString == 'PENDING' && pendingType == 'return')) _buildBeforeRentImages(),
+                        if (statusString == 'COMPLETE') _buildDefectInfo(),
                         if (statusString == 'PENDING') _buildPendingInfo(pendingType),
                       ],
                     ),
@@ -230,7 +183,6 @@ class RentHistoryDetailPage extends StatelessWidget {
             ),
           ),
 
-          // 7. Action Button (ซ่อนปุ่มถ้าเป็น PENDING แบบคืนรถ)
           if (statusString == 'ACCEPT' || (statusString == 'PENDING' && pendingType == 'rent') || statusString == 'USING')
             Padding(
               padding: const EdgeInsets.all(20),
@@ -313,11 +265,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey.shade100, width: 1.5),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
             ]
           ),
           child: Column(
@@ -367,7 +315,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            reason ?? '-',
+            reason ?? 'Cancelled by User',
             style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87),
           ),
         ),
@@ -394,7 +342,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            defect ?? '-',
+            (defect == null || defect.isEmpty) ? 'No defects reported' : defect,
             style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87),
           ),
         ),
@@ -402,9 +350,9 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 4. ปรับ _buildBeforeRentImages ให้แสดงผลเหมือนกับหน้า Schedule Detail
+  // 💡 แก้ไขให้รองรับรูปภาพแบบ Network
   Widget _buildBeforeRentImages() {
-    final List<String> images = car['beforeRentImages'] ?? [];
+    final List<dynamic> images = car['beforeRentImages'] ?? [];
     if (images.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -415,22 +363,23 @@ class RentHistoryDetailPage extends StatelessWidget {
         const SizedBox(height: 10),
         Container(
           height: 200, 
-          color: Colors.grey.shade200, // พื้นหลังสีเทาแบบ Schedule Detail
+          color: Colors.grey.shade200, 
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.all(15),
             itemCount: images.length,
-            itemBuilder: (context, index) => Container(
-              width: 250, // กว้าง 250 แบบ Schedule Detail
-              margin: const EdgeInsets.only(right: 15),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                image: DecorationImage(
-                  image: AssetImage(images[index]),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
+            itemBuilder: (context, index) {
+              String imgPath = images[index].toString();
+              return Container(
+                width: 250,
+                margin: const EdgeInsets.only(right: 15),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+                clipBehavior: Clip.hardEdge,
+                child: imgPath.startsWith('http')
+                  ? Image.network(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => Container(color: Colors.grey.shade400, child: const Icon(Icons.broken_image)))
+                  : Image.asset(imgPath, fit: BoxFit.cover),
+              );
+            }
           ),
         ),
       ],
@@ -476,7 +425,7 @@ class RentHistoryDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // ส่วนปุ่มและการทำงาน (Actions)
+  // 💡 โซนปุ่มกด และการเชื่อมต่อ Firebase 
   // ==========================================
   Widget _buildActionButton(BuildContext context, String status) {
     if (status == 'PENDING' || status == 'ACCEPT') {
@@ -510,21 +459,19 @@ class RentHistoryDetailPage extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
+  // 💡 1. ฟังก์ชันยกเลิกการจอง และคืนเงิน
   void _showCancelConfirmationModal(BuildContext context, String status) {
     bool isAccept = status == 'ACCEPT';
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFC62828), size: 28),
             SizedBox(width: 8),
-            Text(
-              'Cancel Booking', 
-              style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFFC62828))
-            ),
+            Text('Cancel Booking', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color(0xFFC62828))),
           ],
         ),
         content: Text(
@@ -535,7 +482,7 @@ class RentHistoryDetailPage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), 
+            onPressed: () => Navigator.pop(dialogContext), 
             child: const Text('No, keep it', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
           ),
           ElevatedButton(
@@ -543,21 +490,85 @@ class RentHistoryDetailPage extends StatelessWidget {
               backgroundColor: const Color(0xFFC62828), 
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
             ),
-            onPressed: () {
-              Navigator.pop(context); 
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RenterYourRentPage(initialIndex: 3), 
-                ),
-                (route) => false, 
+            onPressed: () async {
+              Navigator.pop(dialogContext); 
+              
+              showDialog(
+                context: context, 
+                barrierDismissible: false, 
+                builder: (context) => const Center(child: CircularProgressIndicator())
               );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Booking cancelled successfully.', style: TextStyle(fontFamily: 'Poppins')),
-                  backgroundColor: Color(0xFFC62828),
-                )
-              );
+
+              try {
+                String bookingId = car['id'];
+                DocumentSnapshot bookingDoc = await FirebaseFirestore.instance.collection('bookings').doc(bookingId).get();
+                
+                if (bookingDoc.exists) {
+                  String currentStatus = bookingDoc['status'] ?? 'pending';
+                  double deposit = (bookingDoc['deposit_paid'] ?? 0).toDouble();
+                  double rentalPrice = (bookingDoc['total_price'] ?? 0).toDouble();
+                  String ownerId = bookingDoc['owner_id'] ?? '';
+                  
+                  double refundAmount = 0;
+                  // เช็คสถานะเพื่อคำนวณยอดคืนเงิน
+                  if (currentStatus == 'pending') {
+                    refundAmount = deposit + rentalPrice; // คืนเต็มจำนวน (มัดจำ + ค่าเช่า)
+                  } else {
+                    refundAmount = rentalPrice; // คืนแค่ค่าเช่า ริบมัดจำ
+                  }
+
+                  // อัปเดตสถานะในตาราง Bookings
+                  await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
+                    'status': 'cancel',
+                    'cancel_reason': 'Cancelled by Renter',
+                  });
+
+                  // คืนเงินเข้า Wallet ของผู้เช่า
+                  User? user = FirebaseAuth.instance.currentUser;
+                  if (user != null && refundAmount > 0) {
+                    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+                      'wallet_balance': FieldValue.increment(refundAmount),
+                    });
+                    
+                    await FirebaseFirestore.instance.collection('transactions').add({
+                      'user_id': user.uid,
+                      'type': 'refund',
+                      'amount': refundAmount,
+                      'timestamp': FieldValue.serverTimestamp(),
+                      'status': 'success',
+                      'description': 'Refund for cancelled booking',
+                    });
+                  }
+
+                  // ยิงแจ้งเตือนไปให้ Owner
+                  if (ownerId.isNotEmpty) {
+                    await FirebaseFirestore.instance.collection('notifications').add({
+                      'user_id': ownerId,
+                      'target_role': 'Owner',
+                      'type': 'cancel',
+                      'title': 'Booking Cancelled',
+                      'message': 'The renter has cancelled the booking request for ${car['name']}.',
+                      'is_read': false,
+                      'created_at': FieldValue.serverTimestamp(),
+                    });
+                  }
+                }
+                
+                if (context.mounted) {
+                  Navigator.pop(context); // ปิด Loading
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RenterYourRentPage(initialIndex: 3)), 
+                    (route) => false, 
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking cancelled successfully.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFFC62828)));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cancelling: $e')));
+                }
+              }
             },
             child: const Text('Confirm Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),
@@ -566,22 +577,17 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
+  // 💡 2. ฟังก์ชันยืนยันการคืนรถ (เปลี่ยนสถานะเป็น Pending (Return))
   void _showReturnConfirmationModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Confirm Return', 
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))
-        ),
-        content: const Text(
-          'Are you sure you want to return this vehicle? The status will be moved to Pending.', 
-          style: TextStyle(fontFamily: 'Poppins', fontSize: 13)
-        ),
+        title: const Text('Confirm Return', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
+        content: const Text('Are you sure you want to return this vehicle? The status will be moved to Pending.', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), 
+            onPressed: () => Navigator.pop(dialogContext), 
             child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
           ),
           ElevatedButton(
@@ -589,21 +595,55 @@ class RentHistoryDetailPage extends StatelessWidget {
               backgroundColor: const Color.fromRGBO(172, 114, 161, 1.0), 
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
             ),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RenterYourRentPage(initialIndex: 4), 
-                ),
-                (route) => false, 
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              
+              showDialog(
+                context: context, 
+                barrierDismissible: false, 
+                builder: (context) => const Center(child: CircularProgressIndicator())
               );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Vehicle returned. Waiting for owner confirmation.', style: TextStyle(fontFamily: 'Poppins')),
-                  backgroundColor: Color(0xFF2E7D6E),
-                )
-              );
+
+              try {
+                String bookingId = car['id'];
+                
+                // อัปเดตสถานะเป็น Pending และระบุ pending_type ว่าเป็นการ 'return'
+                await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
+                  'status': 'pending',
+                  'pending_type': 'return', 
+                });
+                
+                DocumentSnapshot bookingDoc = await FirebaseFirestore.instance.collection('bookings').doc(bookingId).get();
+                String ownerId = bookingDoc.exists ? (bookingDoc['owner_id'] ?? '') : '';
+                
+                // ยิงแจ้งเตือนให้ Owner ตรวจสภาพรถ
+                if (ownerId.isNotEmpty) {
+                  await FirebaseFirestore.instance.collection('notifications').add({
+                      'user_id': ownerId,
+                      'target_role': 'Owner',
+                      'type': 'hand in request',
+                      'title': 'Vehicle Returned',
+                      'message': 'The renter has returned ${car['name']}. Please inspect and confirm.',
+                      'is_read': false,
+                      'created_at': FieldValue.serverTimestamp(),
+                  });
+                }
+                
+                if (context.mounted) {
+                  Navigator.pop(context); // ปิด Loading
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RenterYourRentPage(initialIndex: 4)), 
+                    (route) => false, 
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle returned. Waiting for owner confirmation.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF2E7D6E)));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error returning vehicle: $e')));
+                }
+              }
             },
             child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),

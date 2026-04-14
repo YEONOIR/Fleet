@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// 💡 1. นำเข้า vehicle_utils.dart เพื่อใช้งานฟังก์ชัน getFuelIcon (ปรับ Path ให้ตรงกับโปรเจกต์ของคุณ)
+import '../../utils/vehicle_utils.dart'; 
 
 class VehicleInfoCard extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -12,8 +14,17 @@ class VehicleInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 ดึง path ของรูปภาพออกมาเก็บในตัวแปร
-    String imgPath = data['image'] ?? 'assets/images/car.jpg';
+    // 💡 2. เปลี่ยนมาใช้ Key ที่ถูกต้อง (มี V นำหน้า หรือ imagePath) 
+    // โดยยังคงเผื่อ Fallback ไว้กันเหนียวเผื่อบางหน้าส่ง data มาแบบเก่า
+    String imgPath = data['imagePath'] ?? data['image'] ?? 'assets/images/car.jpg';
+    String vName = data['V Name'] ?? data['name'] ?? 'Unknown Vehicle';
+    String vRate = (data['V_Rate'] ?? data['rating'] ?? 0.0).toString();
+    String vPlate = data['V Plate'] ?? data['plate'] ?? '-';
+    String vModel = data['V Model'] ?? data['model'] ?? '-';
+    String vType = data['V Type'] ?? data['vType'] ?? '-';
+    String vAddress = data['V Address'] ?? data['address'] ?? 'No address provided';
+    String vPrice = (data['V Price'] ?? data['price'] ?? 0).toString();
+    String vFuel = data['V Fuel'] ?? data['fuel'] ?? ''; // ดึงข้อมูลเชื้อเพลิงมาเผื่อแปลงเป็นไอคอน
 
     return GestureDetector(
       onTap: onTap, 
@@ -43,7 +54,7 @@ class VehicleInfoCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    data['name'] ?? 'Unknown Vehicle',
+                    vName, // 💡 ใช้ตัวแปร vName ที่ดึงมาอย่างถูกต้องแล้ว
                     style: const TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Row(
@@ -51,7 +62,7 @@ class VehicleInfoCard extends StatelessWidget {
                       const Icon(Icons.star, color: Color(0xFFFFD700), size: 18),
                       const SizedBox(width: 5),
                       Text(
-                        data['rating']?.toString() ?? '0.0', 
+                        vRate, 
                         style: const TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ],
@@ -66,11 +77,9 @@ class VehicleInfoCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 💡 แก้ไขส่วนแสดงรูปรถตรงนี้
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: imgPath.startsWith('http') 
-                      // กรณีที่เป็น URL จากเน็ต
                       ? Image.network(
                           imgPath,
                           width: 100,
@@ -83,7 +92,6 @@ class VehicleInfoCard extends StatelessWidget {
                             child: const Icon(Icons.directions_car, color: Colors.grey)
                           ),
                         )
-                      // กรณีที่เป็นรูปจากในเครื่อง (assets)
                       : Image.asset(
                           imgPath,
                           width: 100,
@@ -107,17 +115,18 @@ class VehicleInfoCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('License plate: ${data['plate']}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
-                            const Icon(Icons.local_gas_station_outlined, size: 20, color: Colors.black87), 
+                            Text('License plate: $vPlate', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
+                            // 💡 3. นำฟังก์ชัน getFuelIcon มาครอบตัวแปร vFuel เพื่อให้แสดงผลลัพธ์เป็นไอคอนที่ถูกต้อง
+                            Icon(getFuelIcon(vFuel), size: 20, color: Colors.black87), 
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text('Model: ${data['model']}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
+                        Text('Model: $vModel', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
                         const SizedBox(height: 2),
-                        Text('Type: ${data['vType']}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
+                        Text('Type: $vType', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
                         const SizedBox(height: 4),
                         Text(
-                          data['address'] ?? '-',
+                          vAddress, // 💡 ใช้ตัวแปร vAddress ที่ดึงมาอย่างถูกต้องแล้ว
                           style: const TextStyle(fontFamily: 'Poppins', fontSize: 10, color: Colors.black54),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -128,7 +137,7 @@ class VehicleInfoCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             const Text('Price  ', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-                            Text('${data['price']} ฿ / Hr.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
+                            Text('$vPrice ฿ / Hr.', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
                           ],
                         ),
                       ],

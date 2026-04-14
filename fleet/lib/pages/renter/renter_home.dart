@@ -54,6 +54,7 @@ class _RenterHomePageState extends State<RenterHomePage> {
     }
   }
 
+  // 💡 ไฟล์ renter_home.dart ในส่วนของ _fetchVehiclesData()
   Future<void> _fetchVehiclesData() async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -66,17 +67,21 @@ class _RenterHomePageState extends State<RenterHomePage> {
       for (var doc in snapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
         fetchedCars.add({
+          // 💡 แก้ไขการส่งข้อมูลให้ครบถ้วน และตรงตาม Key ที่ต้องการ
           'id': doc.id, 
-          'name': data['brand'] != null ? "${data['brand']} ${data['model']}" : "Unknown Vehicle",
-          'rating': '0.0', 
-          'plate': data['license_plate'] ?? '-',
-          'model': data['model'] ?? '-',
-          'vType': data['vehicle_type'] ?? 'Car',
-          'address': data['location'] ?? 'No address provided',
-          'price': data['price_per_day'] ?? 0,
-          'image': (data['vehicle_images'] != null && (data['vehicle_images'] as List).isNotEmpty)
-              ? data['vehicle_images'][0] 
-              : 'assets/images/car.jpg', 
+          'V Name': data['vehicle_name'] ?? (data['brand'] != null ? "${data['brand']} ${data['model']}" : "Unknown Vehicle"), // ลองหา V Name ก่อน ถ้าไม่มีค่อยผสม
+          'V_Rate': (data['rating'] ?? 0.0).toDouble(), // ดึง rating จริงๆ
+          'V Plate': data['license_plate'] ?? '-',
+          'V Brand': data['brand'] ?? '-',
+          'V Model': data['model'] ?? '-',
+          'V Type': data['vehicle_type'] ?? 'Car',
+          'V Fuel': data['fuel'] ?? 'N/A', // ต้องดึง fuel มาด้วยเพื่อให้ใช้กับไอคอนพลังงานได้
+          'V Address': data['address'] ?? data['location'] ?? 'No address provided', // ดึง address แทน location
+          'V Price': (data['price_per_day'] ?? 0).toDouble(),
+          'V Deposit': (data['deposit'] ?? 0).toDouble(), // เผื่อไว้ส่งต่อให้หน้ารายละเอียด
+          // ดึงรูปจาก 'images' ตามที่เห็นในฐานข้อมูลของคุณ
+          'imagePath': (data['images'] != null && (data['images'] as List).isNotEmpty) ? data['images'][0] : 'assets/images/car.jpg',
+          'images': data['images'] ?? [], // ส่งไปเผื่อดูรูปเต็มในหน้ารายละเอียด
         });
       }
 

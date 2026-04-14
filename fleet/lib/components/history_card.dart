@@ -14,6 +14,12 @@ class HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 💡 เช็ค Path ว่าเป็น URL หรือ Assets
+    String imgPath = car['image']?.toString() ?? 'assets/images/car.jpg';
+    
+    // 💡 ดึงข้อมูล booking ออกมาเพื่อใช้วันที่
+    Map<String, dynamic>? booking = car['booking']; 
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -22,7 +28,7 @@ class HistoryCard extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: gradientColors[0].withValues(alpha: 0.15),
+              color: gradientColors[0].withOpacity(0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -60,8 +66,7 @@ class HistoryCard extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFC107),
                           borderRadius: BorderRadius.circular(12),
@@ -69,8 +74,7 @@ class HistoryCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star,
-                                size: 14, color: Colors.white),
+                            const Icon(Icons.star, size: 14, color: Colors.white),
                             const SizedBox(width: 3),
                             Text(
                               (car['rating'] as num).toString(),
@@ -101,19 +105,14 @@ class HistoryCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
+                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(0, 2))
                           ],
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            car['image'] as String,
-                            fit: BoxFit.cover,
-                          ),
+                          child: imgPath.startsWith('http')
+                              ? Image.network(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image, color: Colors.grey)))
+                              : Image.asset(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => Container(color: Colors.grey.shade200, child: const Icon(Icons.directions_car, color: Colors.grey))),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -123,38 +122,32 @@ class HistoryCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _detailRow(Icons.credit_card,
-                                'License plate: ${car['plate']}'),
+                            _detailRow(Icons.credit_card, 'License plate: ${car['plate']}'),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.directions_car_outlined,
-                                'Model: ${car['model']}'),
+                            _detailRow(Icons.directions_car_outlined, 'Model: ${car['model']}'),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.category_outlined,
-                                'Type: ${car['type']}'),
+                            _detailRow(Icons.category_outlined, 'Type: ${car['type']}'),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.location_on_outlined,
-                                car['address'] as String),
+                            _detailRow(Icons.location_on_outlined, car['address'] as String),
                             const SizedBox(height: 6),
+                            
+                            // 💡 เปลี่ยนจาก Price เป็นช่วงวันที่เช่า
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                Text(
-                                  'Price ',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF070E2A)
-                                        .withValues(alpha: 0.6),
-                                  ),
+                                Icon(
+                                  Icons.calendar_month_outlined, 
+                                  size: 14, 
+                                  color: const Color(0xFF070E2A).withOpacity(0.6)
                                 ),
+                                const SizedBox(width: 5),
                                 Text(
-                                  '${car['price']} ฿ / Hr.',
+                                  '${booking?['startDate'] ?? '-'} - ${booking?['endDate'] ?? '-'}',
                                   style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFFFFC107),
+                                    fontFamily: 'Poppins', 
+                                    fontSize: 12, 
+                                    fontWeight: FontWeight.bold, 
+                                    color: Color.fromRGBO(7, 14, 42, 0.8)
                                   ),
                                 ),
                               ],
@@ -171,9 +164,7 @@ class HistoryCard extends StatelessWidget {
                   width: double.infinity,
                   height: 4,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: gradientColors,
-                    ),
+                    gradient: LinearGradient(colors: gradientColors),
                   ),
                 ),
               ],
@@ -189,8 +180,7 @@ class HistoryCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon,
-            size: 14, color: const Color(0xFF070E2A).withValues(alpha: 0.5)),
+        Icon(icon, size: 14, color: const Color(0xFF070E2A).withOpacity(0.5)),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
@@ -199,7 +189,7 @@ class HistoryCard extends StatelessWidget {
               fontFamily: 'Poppins',
               fontSize: 11,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF070E2A).withValues(alpha: 0.8),
+              color: const Color(0xFF070E2A).withOpacity(0.8),
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

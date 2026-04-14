@@ -63,7 +63,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
   }
 
   // ==========================================
-  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (แบบจริง)
+  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (แบบ Join 2 ตาราง)
   // ==========================================
   Future<void> _fetchRentHistoryFromFirebase() async {
     try {
@@ -73,7 +73,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
         return;
       }
 
-      // ไปค้นหาข้อมูลในตาราง bookings
       QuerySnapshot snap = await FirebaseFirestore.instance
           .collection('bookings')
           .where('renter_id', isEqualTo: user.uid)
@@ -85,66 +84,118 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
         for (var doc in snap.docs) {
           var data = doc.data() as Map<String, dynamic>;
           
+          int statusCode = 4; 
+          String dbStatus = data['status']?.toString().toLowerCase() ?? 'pending';
+          if (dbStatus == 'accept' || dbStatus == 'accepted') statusCode = 0;
+          else if (dbStatus == 'using') statusCode = 1;
+          else if (dbStatus == 'complete' || dbStatus == 'completed') statusCode = 2;
+          else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'rejected') statusCode = 3;
+          else statusCode = 4; 
+
+          // 💡 วิ่งไปหาข้อมูลรถเพิ่มเติมจากตาราง vehicles
+          String vehicleId = data['vehicle_id'] ?? '';
+          String vName = 'Unknown Vehicle';
+          String vPlate = '-';
+          String vModel = '-';
+          String vType = 'Car';
+          String vImage = 'assets/images/car.jpg';
+          String vAddress = 'No address';
+          String vFuel = '-';
+          List<dynamic> vImages = [];
+
+          if (vehicleId.isNotEmpty) {
+            var vDoc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
+            if (vDoc.exists) {
+               var vd = vDoc.data() as Map<String, dynamic>;
+               vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
+               vPlate = vd['license_plate'] ?? '-';
+               vModel = vd['model'] ?? '-';
+               vType = vd['vehicle_type'] ?? 'Car';
+               vAddress = vd['address'] ?? 'No address';
+               vFuel = vd['fuel'] ?? '-'; // 💡 ดึงประเภทน้ำมันมาแล้ว
+               vImages = vd['images'] ?? []; // 💡 ดึงรูปภาพทั้งหมดมาแล้ว
+               vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
+            }
+          }
+
+          // 💡 ไปดึงข้อมูลเจ้าของรถด้วย owner_id
+          String ownerId = data['owner_id'] ?? '';
+          String oName = 'Owner';
+          String oPhone = '-';
+          if (ownerId.isNotEmpty) {
+            var oDoc = await FirebaseFirestore.instance.collection('users').doc(ownerId).get();
+            if (oDoc.exists) {
+               var od = oDoc.data() as Map<String, dynamic>;
+               oName = od['first_name'] ?? 'Owner';
+               oPhone = od['phone'] ?? '-';
+            }
+          }
+
+          String formatDate(Timestamp? ts) {
+            if (ts == null) return 'N/A';
+            DateTime d = ts.toDate();
+            return '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
+          }
+          String formatTime(Timestamp? ts) {
+            if (ts == null) return 'N/A';
+            DateTime d = ts.toDate();
+            return '${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
+          }
+
           realData.add({
             'id': doc.id,
-            'name': data['vehicle_name'] ?? 'Unknown Vehicle', 
+            'name': vName, 
             'rating': 0.0, 
-            'plate': data['license_plate'] ?? '-',
-            'model': data['vehicle_model'] ?? '-',
-            'type': data['vehicle_type'] ?? 'Car',
-            'address': data['location'] ?? 'No address provided',
+            'plate': vPlate,
+            'model': vModel,
+            'type': vType,
+            'address': vAddress,
             'price': data['total_price'] ?? 0,
-            'image': data['image_url'] ?? 'assets/images/car.jpg', 
-            'status': data['status'] ?? 4, 
-            'fuel': data['fuel'] ?? '-',
+            'image': vImage, 
+            'images': vImages, // 💡 ส่ง Array รูปภาพทั้งหมดไปให้หน้ารายละเอียด
+            'status': statusCode, 
+            'fuel': vFuel, // 💡 ส่งข้อมูลน้ำมันไป
             'deposit': data['deposit_paid'] ?? 0,
             'owner': {
-              'name': data['owner_name'] ?? 'Owner', 
-              'phone': data['owner_phone'] ?? '-', 
+              'name': oName, 
+              'phone': oPhone, 
               'rating': 0.0
             },
             'booking': {
-              'startDate': data['start_date'] ?? 'N/A',
-              'endDate': data['end_date'] ?? 'N/A',
-              'startTime': data['start_time'] ?? 'N/A',
-              'endTime': data['end_time'] ?? 'N/A',
+              'startDate': formatDate(data['start_time'] as Timestamp?),
+              'endDate': formatDate(data['end_time'] as Timestamp?),
+              'startTime': formatTime(data['start_time'] as Timestamp?),
+              'endTime': formatTime(data['end_time'] as Timestamp?),
               'totalPrice': data['total_price'] ?? 0,
             },
             'beforeRentImages': data['before_images'] ?? [],
             'afterRentImages': data['after_images'] ?? [],
             'pendingType': data['pending_type'] ?? 'rent',
-            'defect': data['defect'] ?? '',
+            'defect': data['handin_defect'] ?? '',
+            'created_at': data['created_at'] 
           });
         }
 
-        if (mounted) {
-          setState(() {
-            _rentData = realData;
-          });
-        }
+        realData.sort((a, b) {
+           Timestamp? timeA = a['created_at'] as Timestamp?;
+           Timestamp? timeB = b['created_at'] as Timestamp?;
+           if (timeA == null) return 1;
+           if (timeB == null) return -1;
+           return timeB.compareTo(timeA);
+        });
+
+        if (mounted) setState(() => _rentData = realData);
       } else {
-        // 💡 ถ้าไม่เจอข้อมูล ให้ล้างข้อมูลเป็นลิสต์ว่าง เพื่อให้โชว์หน้า No rentals
-        if (mounted) {
-          setState(() {
-            _rentData = [];
-          });
-        }
+        if (mounted) setState(() => _rentData = []);
       }
     } catch (e) {
       print("Error fetching bookings: $e");
-      if (mounted) {
-        setState(() {
-          _rentData = [];
-        });
-      }
+      if (mounted) setState(() => _rentData = []);
     } finally {
-      // 💡 หยุดหมุนวงแหวน ไม่ว่าจะดึงข้อมูลสำเร็จ หรือพัง หรือว่างเปล่า
-      if (mounted) {
-        setState(() => _isLoading = false); 
-      }
+      if (mounted) setState(() => _isLoading = false); 
     }
   }
-
+  
   @override
   void dispose() {
     _tabController.dispose();

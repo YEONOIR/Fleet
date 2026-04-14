@@ -75,7 +75,7 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
   }
 
   // ==========================================
-  // 💡 ฟังก์ชันเติมเงินเข้า Firebase
+  // 💡 ฟังก์ชันเติมเงินเข้า Firebase (อัปเดตเพิ่มแจ้งเตือนและพากลับหน้า Home)
   // ==========================================
   Future<void> _handleTopUp() async {
     if (_selectedAmount == null || _selectedAmount! <= 0 || _selectedBankIndex == null) return;
@@ -93,7 +93,7 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
           'wallet_balance': FieldValue.increment(_selectedAmount!),
         });
 
-        // 2. (Optional) บันทึกประวัติการทำรายการลงตาราง transactions
+        // 2. บันทึกประวัติการทำรายการลงตาราง transactions
         await FirebaseFirestore.instance.collection('transactions').add({
           'user_id': user.uid,
           'type': 'topup',
@@ -101,6 +101,17 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
           'bank': bankName,
           'timestamp': FieldValue.serverTimestamp(),
           'status': 'success',
+        });
+
+        // 💡 3. NEW: สร้างการแจ้งเตือน (Notification) ให้กับผู้ใช้
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'user_id': user.uid,
+          'target_role': 'Renter', // กำหนดให้ Renter เห็น
+          'type': 'top up success', // ต้องตรงกับ case ใน notification_card.dart
+          'title': 'Top-up Successful',
+          'message': 'Your wallet has been topped up with ฿$_selectedAmount via $bankName.',
+          'is_read': false,
+          'created_at': FieldValue.serverTimestamp(),
         });
 
         if (mounted) {
@@ -112,12 +123,9 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
             ),
           );
           
-          // รีเซ็ตหน้าจอและดึงข้อมูลใหม่
-          _amountController.clear();
-          setState(() {
-            _selectedBankIndex = null;
-          });
-          await _fetchUserData(); 
+          // 💡 4. NEW: พากลับไปหน้า Renter Home
+          // เนื่องจาก renter_home.dart ใช้คำสั่ง await รออยู่ พอกลับไปมันจะ fetch ข้อมูลใหม่ให้อัตโนมัติ
+          Navigator.pop(context, true); 
         }
       }
     } catch (e) {
@@ -128,7 +136,7 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
