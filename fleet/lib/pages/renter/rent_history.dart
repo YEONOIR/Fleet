@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 นำเข้า Firestore
-import 'package:firebase_auth/firebase_auth.dart'; // 💡 นำเข้า Auth
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:firebase_auth/firebase_auth.dart'; 
 import 'renter_your_rent.dart'; 
 import '../review_page.dart'; 
+import '../take_photo.dart'; // 💡 นำเข้าหน้าถ่ายรูป
 
 class RentHistoryDetailPage extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -164,7 +165,7 @@ class RentHistoryDetailPage extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _buildInfoColumn('Deposit (฿)', car['deposit'].toString()),
-                            _buildInfoColumn('Total Price (฿)', car['price'].toString()), // 💡 เปลี่ยนคำอธิบายให้ชัดเจนขึ้น
+                            _buildInfoColumn('Total Price (฿)', car['price'].toString()), 
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -253,6 +254,11 @@ class RentHistoryDetailPage extends StatelessWidget {
     final booking = car['booking'];
     if (booking == null) return const SizedBox.shrink();
 
+    // 💡 ดึงค่าเช่าและค่ามัดจำมาแปลงเป็นตัวเลขเพื่อคำนวณยอดรวม
+    double rentalPrice = double.tryParse(booking['totalPrice'].toString()) ?? 0.0;
+    double deposit = double.tryParse(car['deposit'].toString()) ?? 0.0;
+    double grandTotal = rentalPrice + deposit;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,14 +285,36 @@ class RentHistoryDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Divider(height: 1, color: Colors.grey.shade200),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
+              
+              // 💡 เพิ่มการแสดงผลแจกแจงค่าใช้จ่าย (Breakdown)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total Price', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.grey)),
+                  const Text('Rental Fee', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
+                  Text('฿ $rentalPrice', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF070E2A))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Refundable Deposit', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey)),
+                  Text('฿ $deposit', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF070E2A))),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Divider(height: 1, color: Colors.grey.shade200),
+              const SizedBox(height: 15),
+              
+              // 💡 ยอดรวมทั้งหมด
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total Payment', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF070E2A))),
                   Text(
-                    '฿ ${booking['totalPrice']}',
-                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0)),
+                    '฿ $grandTotal',
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.bold, color: Color.fromRGBO(172, 114, 161, 1.0)),
                   ),
                 ],
               ),
@@ -428,7 +456,31 @@ class RentHistoryDetailPage extends StatelessWidget {
   // 💡 โซนปุ่มกด และการเชื่อมต่อ Firebase 
   // ==========================================
   Widget _buildActionButton(BuildContext context, String status) {
-    if (status == 'PENDING' || status == 'ACCEPT') {
+    // 💡 1. ดึงวันที่ปัจจุบันมาเช็คกับวันที่จอง
+    bool canPickUp = false;
+    if (status == 'ACCEPT') {
+      final booking = car['booking'];
+      if (booking != null && booking['startDate'] != null && booking['startDate'] != 'N/A') {
+        try {
+          List<String> parts = booking['startDate'].toString().split('/');
+          if (parts.length == 3) {
+            DateTime startDateTime = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+            DateTime now = DateTime.now();
+            DateTime today = DateTime(now.year, now.month, now.day);
+            
+            // ถ้าถึงวันที่จองแล้ว (หรือเลยมาแล้ว) ให้สามารถกดรับรถได้
+            if (!today.isBefore(startDateTime)) {
+              canPickUp = true;
+            }
+          }
+        } catch (e) {
+          print('Date parse error: $e');
+        }
+      }
+    }
+
+    // 💡 2. เงื่อนไขการแสดงปุ่ม
+    if (status == 'PENDING' || (status == 'ACCEPT' && !canPickUp)) {
       return SizedBox(
         width: double.infinity,
         height: 55,
@@ -440,6 +492,32 @@ class RentHistoryDetailPage extends StatelessWidget {
           ),
           onPressed: () => _showCancelConfirmationModal(context, status),
           child: const Text('Cancel Booking', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      );
+    } else if (status == 'ACCEPT' && canPickUp) {
+      // 💡 ปุ่มสีฟ้า สำหรับกดรับรถเมื่อถึงเวลา
+      return SizedBox(
+        width: double.infinity,
+        height: 55,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF31A1D1), // สีฟ้า
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TakePhotoPage(
+                  vehicleName: car['name'] ?? 'Pick Up Vehicle',
+                  bookingId: car['id'], // 💡 ส่ง Booking ID ไป
+                  vehicleId: car['vehicle_id'], // 💡 ส่ง Vehicle ID ไป
+                  isRenterPickUp: true, // 💡 ส่งค่าไปบอกว่า Renter กำลังมารับรถ!
+                )
+              )
+            );
+          },
+          child: const Text('Pick up the vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       );
     } else if (status == 'USING') {
@@ -459,7 +537,7 @@ class RentHistoryDetailPage extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  // 💡 1. ฟังก์ชันยกเลิกการจอง และคืนเงิน
+  // 💡 ฟังก์ชันยกเลิกการจอง และคืนเงิน
   void _showCancelConfirmationModal(BuildContext context, String status) {
     bool isAccept = status == 'ACCEPT';
 
@@ -496,7 +574,7 @@ class RentHistoryDetailPage extends StatelessWidget {
               showDialog(
                 context: context, 
                 barrierDismissible: false, 
-                builder: (context) => const Center(child: CircularProgressIndicator())
+                builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFFC62828)))
               );
 
               try {
@@ -577,7 +655,7 @@ class RentHistoryDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 2. ฟังก์ชันยืนยันการคืนรถ (เปลี่ยนสถานะเป็น Pending (Return))
+  // 💡 ฟังก์ชันยืนยันการคืนรถ (เปลี่ยนสถานะเป็น Pending (Return))
   void _showReturnConfirmationModal(BuildContext context) {
     showDialog(
       context: context,
@@ -601,7 +679,7 @@ class RentHistoryDetailPage extends StatelessWidget {
               showDialog(
                 context: context, 
                 barrierDismissible: false, 
-                builder: (context) => const Center(child: CircularProgressIndicator())
+                builder: (context) => const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)))
               );
 
               try {

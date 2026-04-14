@@ -64,7 +64,35 @@ class VehicleMiniCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.asset(imagePath, width: 80, height: 80, fit: BoxFit.cover)),
+                // 💡 แก้ไขส่วนแสดงรูปภาพตรงนี้
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10), 
+                  child: imagePath.startsWith('http')
+                      ? Image.network(
+                          imagePath, 
+                          width: 80, 
+                          height: 80, 
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 80, 
+                            height: 80, 
+                            color: Colors.grey.shade200, 
+                            child: const Icon(Icons.broken_image, color: Colors.grey)
+                          ),
+                        )
+                      : Image.asset(
+                          imagePath, 
+                          width: 80, 
+                          height: 80, 
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 80, 
+                            height: 80, 
+                            color: Colors.grey.shade200, 
+                            child: const Icon(Icons.directions_car, color: Colors.grey)
+                          ),
+                        )
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

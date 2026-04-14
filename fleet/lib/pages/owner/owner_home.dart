@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../components/request_card.dart'; // 💡 ดึง Component ใหม่เข้ามา
+import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import '../../components/request_card.dart'; 
 
 class OwnerHomePage extends StatefulWidget {
   const OwnerHomePage({super.key});
@@ -12,71 +15,180 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   String selectedType = 'All';
   final List<String> filterTypes = ['All', 'Rent', 'Hand in'];
 
-  final List<Map<String, dynamic>> dummyRequests = [
-    {
-      "Request Type": "Rent",
-      "Rent Status": "Pending",
-      "Rent_Start": "08-02-2026 12:00",
-      "Rent Handin": "12-02-2026 14:00",
-      "Rent Price": 750.0,
-      "Acc FName": "Sukrit",
-      "Acc LName": "Chatchawal",
-      "Acc Phone": "0848978975",
-      "Acc Rate": 3.0,
-      "renterImage": "assets/icons/avatar.jpg", // รูป Mockup ผู้เช่า
-      "vehicleData": {
-        "V Name": "Pimthida's Bike",
-        "V_Rate": 4.5,
-        "imagePath": "assets/images/bike.jpg", // รูป Mockup รถ
-        "V Plate": "BB 567",
-        "V Brand": "Yamaha",
-        "V Model": "GRAND FILANO HYBRID",
-        "V Type": "Motorcycle",
-        "V Fuel": "Hybrid",
-        "V Address": "222 JJ village, Bangkok 10120",
-        "V Price": 300.0,
-      },
-    },
-    {
-      "Request Type": "Hand in",
-      "Rent Status": "Using",
-      "Rent_Start": "01-02-2026 10:00",
-      "Rent Handin": "05-02-2026 10:00",
-      "Rent Price": 1000.0,
-      "Acc FName": "Pimthida",
-      "Acc LName": "Butsra",
-      "Acc Phone": "0812345678",
-      "Acc Rate": 3.7,
-      "renterImage": "assets/icons/avatar.jpg", // รูป Mockup ผู้เช่า
-      "vehicleData": {
-        "V Name": "Sukrit's Honda",
-        "V_Rate": 4.5,
-        "imagePath": "assets/images/car.jpg", // รูป Mockup รถ
-        "V Plate": "AB 1222",
-        "V Brand": "Honda",
-        "V Model": "Civic e:HEV",
-        "V Type": "4 Door Car",
-        "V Fuel": "Hybrid",
-        "V Address": "111/11, Ander Road, Bangkok 11111",
-        "V Price": 250.0,
-      },
-    },
-  ];
+  // 💡 State สำหรับเก็บข้อมูลจริง
+  bool _isLoading = true;
+  String _ownerFirstName = "Owner";
+  List<Map<String, dynamic>> _requests = [];
+  StreamSubscription<QuerySnapshot>? _bookingSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOwnerName();
+    _listenToRequests();
+  }
+
+  @override
+  void dispose() {
+    _bookingSubscription?.cancel(); // ยกเลิกการฟังเมื่อปิดหน้า
+    super.dispose();
+  }
+
+  // ==========================================
+  // 💡 ดึงชื่อเจ้าของรถมาโชว์ที่ AppBar
+  // ==========================================
+  Future<void> _fetchOwnerName() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      var doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _ownerFirstName = doc['first_name'] ?? 'Owner';
+        });
+      }
+    }
+  }
+
+  // ==========================================
+  // 💡 ฟังข้อมูล Request จาก Firebase แบบ Real-time
+  // ==========================================
+  void _listenToRequests() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // ดึงเฉพาะ booking ที่เกี่ยวข้องกัน Owner คนนี้ และรอการอนุมัติ (pending)
+    _bookingSubscription = FirebaseFirestore.instance
+        .collection('bookings')
+        .where('owner_id', isEqualTo: user.uid)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) async {
+          
+      List<Map<String, dynamic>> fetchedRequests = [];
+
+      for (var doc in snapshot.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+        
+        // จำแนกประเภทคำขอ (ถ้ามีการขอคืนรถ จะมี pending_type = 'return')
+        String pendingType = data['pending_type'] ?? 'rent';
+        String reqType = pendingType == 'return' ? 'Hand in' : 'Rent';
+
+        // 1. วิ่งไปดึงข้อมูลผู้เช่า (Renter)
+        String renterId = data['renter_id'] ?? '';
+        String fName = 'Unknown';
+        String lName = '';
+        String phone = '-';
+        String renterImage = 'assets/icons/avatar.jpg';
+
+        if (renterId.isNotEmpty) {
+          var rDoc = await FirebaseFirestore.instance.collection('users').doc(renterId).get();
+          if (rDoc.exists) {
+            var rData = rDoc.data() as Map<String, dynamic>;
+            fName = rData['first_name'] ?? 'Unknown';
+            lName = rData['last_name'] ?? '';
+            phone = rData['phone'] ?? '-';
+            if (rData['profile_image'] != null && rData['profile_image'].toString().startsWith('http')) {
+              renterImage = rData['profile_image'];
+            }
+          }
+        }
+
+        // 2. วิ่งไปดึงข้อมูลรถ (Vehicle)
+        String vehicleId = data['vehicle_id'] ?? '';
+        Map<String, dynamic> vData = {
+          "id": vehicleId,
+          "V Name": "Unknown Vehicle",
+          "V_Rate": 0.0,
+          "imagePath": "assets/images/car.jpg",
+          "V Plate": "-",
+          "V Brand": "-",
+          "V Model": "-",
+          "V Type": "Car",
+          "V Fuel": "-",
+          "V Address": "-",
+          "V Price": 0.0,
+        };
+
+        if (vehicleId.isNotEmpty) {
+          var vDoc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
+          if (vDoc.exists) {
+            var vd = vDoc.data() as Map<String, dynamic>;
+            vData = {
+              "id": vehicleId,
+              "V Name": vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown',
+              "V_Rate": (vd['rating'] ?? 0).toDouble(),
+              "imagePath": (vd['images'] != null && (vd['images'] as List).isNotEmpty) ? vd['images'][0] : 'assets/images/car.jpg',
+              "V Plate": vd['license_plate'] ?? '-',
+              "V Brand": vd['brand'] ?? '-',
+              "V Model": vd['model'] ?? '-',
+              "V Type": vd['vehicle_type'] ?? 'Car',
+              "V Fuel": vd['fuel'] ?? '-',
+              "V Address": vd['address'] ?? '-',
+              "V Price": (vd['price_per_day'] ?? 0).toDouble(),
+            };
+          }
+        }
+
+        // 3. จัดรูปแบบวันที่
+        Timestamp? startTs = data['start_time'];
+        Timestamp? endTs = data['end_time'];
+        String formatDateTime(Timestamp? ts) {
+          if (ts == null) return 'N/A';
+          DateTime d = ts.toDate();
+          return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+        }
+
+        // นำมาประกอบร่างรวมกัน
+        fetchedRequests.add({
+          "bookingId": doc.id,
+          "renterId": renterId,
+          "Request Type": reqType,
+          "Rent Status": data['status'],
+          "Rent_Start": formatDateTime(startTs),
+          "Rent Handin": formatDateTime(endTs),
+          "Rent Price": data['total_price'] ?? 0.0,
+          "deposit": data['deposit_paid'] ?? 0.0,
+          "Acc FName": fName,
+          "Acc LName": lName,
+          "Acc Phone": phone,
+          "Acc Rate": 0.0, 
+          "renterImage": renterImage,
+          "vehicleData": vData,
+          "created_at": data['created_at'],
+        });
+      }
+
+      // เรียงลำดับคำขอใหม่ล่าสุดอยู่บนสุด
+      fetchedRequests.sort((a, b) {
+        Timestamp? timeA = a['created_at'] as Timestamp?;
+        Timestamp? timeB = b['created_at'] as Timestamp?;
+        if (timeA == null) return 1;
+        if (timeB == null) return -1;
+        return timeB.compareTo(timeA);
+      });
+
+      if (mounted) {
+        setState(() {
+          _requests = fetchedRequests;
+          _isLoading = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    int totalReq = dummyRequests.length;
-    int rentReq = dummyRequests.where((r) => r['Request Type'] == 'Rent').length;
-    int handInReq = dummyRequests.where((r) => r['Request Type'] == 'Hand in').length;
+    int totalReq = _requests.length;
+    int rentReq = _requests.where((r) => r['Request Type'] == 'Rent').length;
+    int handInReq = _requests.where((r) => r['Request Type'] == 'Hand in').length;
 
     List<Map<String, dynamic>> filteredRequests = selectedType == 'All'
-        ? dummyRequests
-        : dummyRequests.where((r) => r['Request Type'] == selectedType).toList();
+        ? _requests
+        : _requests.where((r) => r['Request Type'] == selectedType).toList();
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
       
-      // 1. AppBar
       appBar: AppBar(
         toolbarHeight: 100,
         elevation: 0,
@@ -89,11 +201,11 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
             ),
           ),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Good Morning,', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.white70)),
-            Text('Sukrit! 👋', style: TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text('Good Morning,', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.white70)),
+            Text('$_ownerFirstName! 👋', style: const TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
         centerTitle: false,
@@ -102,7 +214,6 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 2. Dashboard
           Container(
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
@@ -121,10 +232,8 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
 
-          // 3. Filter Chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -154,21 +263,20 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
               }).toList(),
             ),
           ),
-
           const SizedBox(height: 15),
 
-          // 4. Request List
           Expanded(
-            child: filteredRequests.isEmpty
-                ? const Center(child: Text('No requests found.', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)))
-                : ListView.builder(
-                    padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 120),
-                    itemCount: filteredRequests.length,
-                    itemBuilder: (context, index) {
-                      // 💡 เรียกใช้ Component ที่เราเพิ่งสร้าง
-                      return RequestCard(request: filteredRequests[index]); 
-                    },
-                  ),
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)))
+                : filteredRequests.isEmpty
+                    ? const Center(child: Text('No requests found.', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)))
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 120),
+                        itemCount: filteredRequests.length,
+                        itemBuilder: (context, index) {
+                          return RequestCard(request: filteredRequests[index]); 
+                        },
+                      ),
           ),
         ],
       ),

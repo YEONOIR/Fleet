@@ -89,7 +89,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           if (dbStatus == 'accept' || dbStatus == 'accepted') statusCode = 0;
           else if (dbStatus == 'using') statusCode = 1;
           else if (dbStatus == 'complete' || dbStatus == 'completed') statusCode = 2;
-          else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'rejected') statusCode = 3;
+          else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'reject' || dbStatus == 'rejected') statusCode = 3;
           else statusCode = 4; 
 
           // 💡 วิ่งไปหาข้อมูลรถเพิ่มเติมจากตาราง vehicles
@@ -144,6 +144,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
 
           realData.add({
             'id': doc.id,
+            'vehicle_id': vehicleId,
             'name': vName, 
             'rating': 0.0, 
             'plate': vPlate,
@@ -152,9 +153,9 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
             'address': vAddress,
             'price': data['total_price'] ?? 0,
             'image': vImage, 
-            'images': vImages, // 💡 ส่ง Array รูปภาพทั้งหมดไปให้หน้ารายละเอียด
+            'images': vImages, 
             'status': statusCode, 
-            'fuel': vFuel, // 💡 ส่งข้อมูลน้ำมันไป
+            'fuel': vFuel, 
             'deposit': data['deposit_paid'] ?? 0,
             'owner': {
               'name': oName, 
@@ -172,6 +173,8 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
             'afterRentImages': data['after_images'] ?? [],
             'pendingType': data['pending_type'] ?? 'rent',
             'defect': data['handin_defect'] ?? '',
+            // 💡 เพิ่มตัวแปร cancelReason เข้าไปตรงนี้ครับ
+            'cancelReason': data['cancel_reason'] ?? data['reject_reason'] ?? 'Cancelled by Owner',
             'created_at': data['created_at'] 
           });
         }

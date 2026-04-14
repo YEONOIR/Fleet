@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'vehicle_mini_card.dart'; // ดึง Mini Card มาใช้
-import '../pages/take_photo.dart'; // ดึงหน้ากล้องมาใช้
+import 'vehicle_mini_card.dart'; 
+import '../pages/take_photo.dart'; 
 import '../pages/owner/schedule_detail.dart';
 
 class RequestCard extends StatelessWidget {
@@ -13,6 +13,12 @@ class RequestCard extends StatelessWidget {
     final isRent = request['Request Type'] == 'Rent';
     final startDateParts = request['Rent_Start'].toString().split(' ');
     final endDateParts = request['Rent Handin'].toString().split(' ');
+
+    // 💡 เช็คว่าเป็นรูปภาพจากเน็ตหรือในเครื่อง สำหรับ Avatar ผู้เช่า
+    String rImage = request['renterImage'] ?? 'assets/icons/avatar.jpg';
+    ImageProvider avatarImage = rImage.startsWith('http') 
+        ? NetworkImage(rImage) 
+        : AssetImage(rImage) as ImageProvider;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -34,7 +40,11 @@ class RequestCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(radius: 20, backgroundImage: AssetImage(request['renterImage'])),
+                CircleAvatar(
+                  radius: 20, 
+                  backgroundImage: avatarImage, // 💡 ใช้ ImageProvider
+                  backgroundColor: Colors.grey.shade300,
+                ),
                 const SizedBox(width: 15),
                 Expanded(
                   child: Column(
@@ -103,12 +113,16 @@ class RequestCard extends StatelessWidget {
                 
                 // ปุ่ม Action
                 isRent
-                    ? GestureDetector( // 💡 กรณี Rent: ปุ่มเหลือง ไปหน้า Detail
+                    ? GestureDetector( // กรณี Rent: ปุ่มเหลือง ไปหน้า Detail
                         onTap: () {
+                          // 💡 แพ็คข้อมูลใหม่โดยใส่ bookingId เผื่อไว้ให้หน้า Schedule กด Accept
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ScheduleDetailPage(booking: {
+                                'bookingId': request['bookingId'], 
+                                'vehicleId': request['vehicleData']['id'],
+                                'renterId': request['renterId'],
                                 'renterName': '${request['Acc FName']} ${request['Acc LName']}',
                                 'tel': request['Acc Phone'],
                                 'rating': request['Acc Rate'].toString(),
@@ -126,7 +140,7 @@ class RequestCard extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8D354), // สีเหลือง
+                            color: const Color(0xFFE8D354), 
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Center(
@@ -134,9 +148,17 @@ class RequestCard extends StatelessWidget {
                           ),
                         ),
                       )
-                    : GestureDetector( // 💡 กรณี Hand in: ปุ่มม่วง ไปหน้ากล้อง
+                    : GestureDetector( // กรณี Hand in: ปุ่มม่วง ไปหน้ากล้อง
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => TakePhotoPage(vehicleName: request['vehicleData']['V Name'])));
+                          Navigator.push(
+                            context, 
+                            MaterialPageRoute(
+                              builder: (context) => TakePhotoPage(
+                                vehicleName: request['vehicleData']['V Name'],
+                                vehicleId: request['vehicleData']['id'],
+                              )
+                            )
+                          );
                         },
                         child: _buildAcceptButton(),
                       ),
@@ -148,9 +170,6 @@ class RequestCard extends StatelessWidget {
     );
   }
 
-  // ==========================================
-  // 💡 Helper Widgets & Modals (ย้ายมาอยู่ในนี้ทั้งหมด)
-  // ==========================================
   Widget _buildStatusBadge(String text, bool isRent) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

@@ -1,33 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 นำเข้า Firestore
 import '../../components/tenant_card.dart';
-import '../review_page.dart'; // 💡 อย่าลืมเช็ค path หน้ารีวิวให้ตรงกับของคุณด้วยนะครับ
+import '../review_page.dart'; 
+import '../../utils/vehicle_utils.dart'; // 💡 นำเข้าเพื่อใช้ไอคอนพลังงาน
 
-class ScheduleDetailPage extends StatelessWidget {
+class ScheduleDetailPage extends StatefulWidget {
   final Map<String, dynamic> booking;
 
   const ScheduleDetailPage({super.key, required this.booking});
 
-  // ฟังก์ชันดึงสีสถานะ
+  @override
+  State<ScheduleDetailPage> createState() => _ScheduleDetailPageState();
+}
+
+class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
+  bool _isLoading = true;
+  Map<String, dynamic> _vehicleData = {};
+  Map<String, dynamic> _bookingData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRealData();
+  }
+
+  // ==========================================
+  // 💡 ฟังก์ชันดึงข้อมูลรถและการจองจาก Firestore (อัปเดตแก้บัคหมุนค้าง)
+  // ==========================================
+  Future<void> _fetchRealData() async {
+    try {
+      String bId = widget.booking['bookingId'] ?? '';
+      String vId = widget.booking['vehicleId'] ?? '';
+
+      if (bId.isNotEmpty && vId.isNotEmpty) {
+        var bDoc = await FirebaseFirestore.instance.collection('bookings').doc(bId).get();
+        var vDoc = await FirebaseFirestore.instance.collection('vehicles').doc(vId).get();
+
+        if (bDoc.exists && vDoc.exists && mounted) {
+          setState(() {
+            _bookingData = bDoc.data() as Map<String, dynamic>;
+            _vehicleData = vDoc.data() as Map<String, dynamic>;
+          });
+        } else {
+          print("Warning: Document not found in Firestore");
+        }
+      } else {
+        print("Warning: bookingId or vehicleId is empty");
+      }
+    } catch (e) {
+      print("Error fetching detail: $e");
+    } finally {
+      // 💡 ใช้ finally เพื่อการันตีว่าวงแหวนจะหยุดหมุนเสมอ ไม่ว่าจะเกิดอะไรขึ้นก็ตาม
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Accept': return const Color(0xFF2E8B57); 
-      case 'Complete': return const Color(0xFF28A4C9); 
-      case 'Cancel': return const Color(0xFFA52A2A); 
-      case 'Pending': return Colors.orange; 
-      case 'Using': return const Color.fromRGBO(172, 114, 161, 1.0); 
+    switch (status.toLowerCase()) {
+      case 'accept': 
+      case 'accepted': return const Color(0xFF2E8B57); 
+      case 'complete': 
+      case 'completed': return const Color(0xFF28A4C9); 
+      case 'cancel': 
+      case 'cancelled': 
+      case 'reject': return const Color(0xFFA52A2A); 
+      case 'pending': return Colors.orange; 
+      case 'using': return const Color.fromRGBO(172, 114, 161, 1.0); 
       default: return Colors.black;
     }
   }
 
   // ==========================================
-  // 1. วิดเจ็ต: แถบรูปภาพรถ
+  // 1. วิดเจ็ต: แถบรูปภาพรถ (ดึงจาก Database)
   // ==========================================
   Widget _buildImageGallery() {
-    final List<String> assetImages = [
-      'assets/images/car.jpg',
-      'assets/images/bike.jpg',
-      'assets/images/car2.jpg',
-    ];
+    List<dynamic> images = _vehicleData['images'] ?? [];
+    if (images.isEmpty) images = ['assets/images/car.jpg'];
 
     return Container(
       height: 200, 
@@ -35,18 +87,17 @@ class ScheduleDetailPage extends StatelessWidget {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.all(15),
-        itemCount: assetImages.length, 
+        itemCount: images.length, 
         itemBuilder: (context, index) {
+          String imgPath = images[index].toString();
           return Container(
             width: 250, 
             margin: const EdgeInsets.only(right: 15),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              image: DecorationImage(
-                image: AssetImage(assetImages[index]), 
-                fit: BoxFit.cover,
-              ),
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+            clipBehavior: Clip.hardEdge,
+            child: imgPath.startsWith('http')
+                ? Image.network(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => Container(color: Colors.grey[400], child: const Icon(Icons.broken_image)))
+                : Image.asset(imgPath, fit: BoxFit.cover),
           );
         },
       ),
@@ -54,15 +105,16 @@ class ScheduleDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 2. วิดเจ็ต: ข้อมูลรถ (จัด Layout ใหม่)
+  // 2. วิดเจ็ต: ข้อมูลรถ (ดึงจาก Database)
   // ==========================================
   Widget _buildVehicleInfo(BuildContext context, Color statusColor, String status) {
+    String vFuel = _vehicleData['fuel'] ?? '-';
+    
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // -- โซนข้อมูลรถ และ ไอคอนพลังงาน (Status) --
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -71,11 +123,11 @@ class ScheduleDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoColumn('License Plate', 'AB 1222'),
+                    _buildInfoColumn('License Plate', _vehicleData['license_plate'] ?? '-'),
                     const SizedBox(height: 20),
-                    _buildInfoColumn('Brand', 'Honda'),
+                    _buildInfoColumn('Brand', _vehicleData['brand'] ?? '-'),
                     const SizedBox(height: 20),
-                    _buildInfoColumn('Model', 'Civic e:HEV'),
+                    _buildInfoColumn('Model', _vehicleData['model'] ?? '-'),
                   ],
                 ),
               ),
@@ -84,11 +136,11 @@ class ScheduleDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Icon(Icons.electric_car, size: 45, color: Color.fromRGBO(7, 14, 42, 1.0)),
+                    Icon(getFuelIcon(vFuel), size: 45, color: const Color.fromRGBO(7, 14, 42, 1.0)),
                     const SizedBox(height: 5),
-                    const Text('ENERGY', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    Text(vFuel.toUpperCase() == 'EV' ? 'ENERGY' : vFuel.toUpperCase(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                     const SizedBox(height: 15),
-                    _buildStatusBadge(status, statusColor),
+                    _buildStatusBadge(status.toUpperCase(), statusColor),
                   ],
                 ),
               ),
@@ -96,12 +148,11 @@ class ScheduleDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 25),
 
-          // -- โซนประเภทรถ, เรทติ้ง และ คอมเมนต์ (ย้าย Comment ขึ้นมาต่อท้าย Rating) --
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildInfoColumn('Vehicle Type', 'Sedan'),
+              _buildInfoColumn('Vehicle Type', _vehicleData['vehicle_type'] ?? '-'),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -109,39 +160,20 @@ class ScheduleDetailPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      // ส่วนของ Rating (กดดู Vehicle Reviews)
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (context) => const FleetEntityReviewPage(
-                              isCar: true, 
-                              entityName: 'Vehicle Reviews'
-                            )
-                          ));
-                        },
-                        child: const Row(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews'))),
+                        child: Row(
                           children: [
-                            Icon(Icons.star, color: Colors.amber, size: 20),
-                            SizedBox(width: 5),
-                            Text('4.5', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            const Icon(Icons.star, color: Colors.amber, size: 20),
+                            const SizedBox(width: 5),
+                            Text((_vehicleData['rating'] ?? 0.0).toStringAsFixed(1), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 15), // ระยะห่างระหว่าง Rating กับ Comment
-                      // ส่วนของ Comment (กดดู User Reviews)
+                      const SizedBox(width: 15), 
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (context) => const FleetEntityReviewPage(
-                              isCar: false, 
-                              entityName: 'Vehicle Reviews'
-                            )
-                          ));
-                        },
-                        child: const Text(
-                          'Comment', 
-                          style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)
-                        ),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: false, entityName: 'User Reviews'))),
+                        child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -151,7 +183,6 @@ class ScheduleDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 25),
 
-          // -- โซนที่อยู่ (Address) --
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -161,18 +192,17 @@ class ScheduleDetailPage extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
-                child: const Text('111/11, Ander Road, Cromium, Roselina, Bangkok 11111', style: TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                child: Text(_vehicleData['address'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
               ),
             ],
           ),
           const SizedBox(height: 25),
 
-          // -- โซนมัดจำ และ ราคา --
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoColumn('Deposit (฿)', '1,000'),
-              _buildInfoColumn('Price/Hour (฿)', '250'),
+              _buildInfoColumn('Deposit (฿)', (_bookingData['deposit_paid'] ?? 0).toString()),
+              _buildInfoColumn('Price/Hour (฿)', (_vehicleData['price_per_day'] ?? 0).toString()), // หรือใช้ price แล้วแต่ฐานข้อมูลตั้ง
             ],
           ),
           const SizedBox(height: 10),
@@ -181,7 +211,6 @@ class ScheduleDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 Helper Widget
   Widget _buildInfoColumn(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +222,6 @@ class ScheduleDetailPage extends StatelessWidget {
     );
   }
 
-  // 💡 Helper Widget: ป้าย Status
   Widget _buildStatusBadge(String status, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
@@ -213,8 +241,10 @@ class ScheduleDetailPage extends StatelessWidget {
   // 3. วิดเจ็ต: แสดงส่วนล่างสุดแยกตาม Status
   // ==========================================
   Widget _buildDynamicBottomSection(BuildContext context, String status) {
-    switch (status) {
-      case 'Pending':
+    double totalPrice = (_bookingData['total_price'] ?? 0).toDouble();
+
+    switch (status.toLowerCase()) {
+      case 'pending':
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -230,7 +260,7 @@ class ScheduleDetailPage extends StatelessWidget {
                         side: const BorderSide(color: Colors.redAccent, width: 2),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () => _showRejectReasonModal(context, booking),
+                      onPressed: () => _showRejectReasonModal(context),
                       child: const Text('Decline', style: TextStyle(fontFamily: 'Poppins', color: Colors.redAccent, fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -242,7 +272,7 @@ class ScheduleDetailPage extends StatelessWidget {
                         backgroundColor: const Color(0xFF2E8B57),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      onPressed: () => _showAcceptModal(context, booking),
+                      onPressed: () => _showAcceptModal(context),
                       child: const Text('Accept', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -252,23 +282,24 @@ class ScheduleDetailPage extends StatelessWidget {
           ),
         );
 
-      case 'Complete':
+      case 'complete':
+      case 'completed':
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Price paid', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text('฿ 9,999', style: TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
+                  const Text('Price paid', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text('฿ $totalPrice', style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 20),
               const Text('Pictures upon return', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              _buildImageGallery(),
+              // สามารถเพิ่ม ListView แสดง after_images ตรงนี้ได้ในอนาคต
               const SizedBox(height: 20),
               const Text('Defect', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 5),
@@ -276,35 +307,36 @@ class ScheduleDetailPage extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
-                child: Text(booking['remark'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
+                child: Text(_bookingData['handin_defect'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
               ),
               const SizedBox(height: 20),
             ],
           ),
         );
 
-      case 'Using':
+      case 'using':
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Total Price', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text('฿ 12,000', style: TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
+                  const Text('Total Rental Fee', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text('฿ $totalPrice', style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 20),
               const Text('Pictures before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              _buildImageGallery(), 
+              // สามารถเพิ่ม ListView แสดง before_images ตรงนี้ได้ในอนาคต
             ],
           ),
         );
 
-      case 'Cancel':
+      case 'cancel':
+      case 'reject':
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
@@ -316,22 +348,22 @@ class ScheduleDetailPage extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10)),
-                child: Text(booking['remark'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
+                child: Text(_bookingData['reject_reason'] ?? _bookingData['cancel_reason'] ?? '-', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87)),
               ),
               const SizedBox(height: 30),
             ],
           ),
         );
 
-      case 'Accept':
+      case 'accept':
       default:
-        return const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total Price', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
-              Text('฿ 7,000', style: TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
+              const Text('Total Rental Fee', style: TextStyle(fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.bold)),
+              Text('฿ $totalPrice', style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
             ],
           ),
         );
@@ -340,14 +372,22 @@ class ScheduleDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String status = booking['status'] ?? 'Pending';
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))),
+      );
+    }
+
+    String status = _bookingData['status'] ?? widget.booking['status'] ?? 'Pending';
     Color statusColor = _getStatusColor(status);
+    String titleName = _vehicleData['vehicle_name'] ?? _vehicleData['brand'] ?? 'Vehicle Detail';
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         centerTitle: true,
-        title: const Text("Sukrit's Honda", style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(titleName, style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: Colors.white),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -362,14 +402,11 @@ class ScheduleDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildImageGallery(),
-            
             _buildVehicleInfo(context, statusColor, status), 
-            
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TenantCard(booking: booking), 
+              child: TenantCard(booking: widget.booking), 
             ),
-
             _buildDynamicBottomSection(context, status),
             const SizedBox(height: 30),
           ],
@@ -379,15 +416,15 @@ class ScheduleDetailPage extends StatelessWidget {
   }
 
   // ==========================================
-  // 💡 Modal Functions
+  // 💡 Modal Functions (แก้ปัญหาหมุนค้างและ Context ซ้อนทับ)
   // ==========================================
-  void _showRejectReasonModal(BuildContext context, Map<String, dynamic> booking) {
+  void _showRejectReasonModal(BuildContext pageContext) {
     TextEditingController reasonController = TextEditingController();
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: pageContext,
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Cancel Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
+        title: const Text('Decline Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,12 +445,14 @@ class ScheduleDetailPage extends StatelessWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF07B75), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
-              Navigator.pop(context);
-              _showConfirmRejectModal(context, reasonController.text, booking['renterName']);
+              Navigator.pop(dialogContext); // ✅ ปิด Dialog แรก (พิมพ์เหตุผล)
+              
+              // 💡 ส่ง pageContext ของหน้าหลักเข้าไปแทน ห้ามใช้ dialogContext เด็ดขาด!
+              _showConfirmRejectModal(pageContext, reasonController.text, widget.booking['renterName']);
             },
             child: const Text('Next', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),
@@ -422,21 +461,77 @@ class ScheduleDetailPage extends StatelessWidget {
     );
   }
 
-  void _showConfirmRejectModal(BuildContext context, String reason, String renterName) {
+  void _showConfirmRejectModal(BuildContext pageContext, String reason, String renterName) {
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: pageContext,
+      barrierDismissible: false,
+      builder: (confirmDialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Confirm Rejection', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
         content: Text('Are you sure you want to decline $renterName\'s request?\n\nYour Reason:\n"$reason"', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Back', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+          TextButton(onPressed: () => Navigator.pop(confirmDialogContext), child: const Text('Back', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              Navigator.pop(context); 
-              Navigator.pop(context); 
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rejection sent to the renter.', style: TextStyle(fontFamily: 'Poppins'))));
+            onPressed: () async {
+              // โชว์หมุนโหลด
+              showDialog(
+                context: confirmDialogContext, 
+                barrierDismissible: false, 
+                builder: (loadingContext) => const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)))
+              );
+
+              try {
+                String bId = widget.booking['bookingId'];
+                String rId = widget.booking['renterId'];
+                
+                // 💡 1. คำนวณเงินที่จะคืน (คืนมัดจำ + คืนค่าเช่าเต็มจำนวน เพราะ Owner ปฏิเสธเอง)
+                double refundAmount = (_bookingData['deposit_paid'] ?? 0).toDouble() + (_bookingData['total_price'] ?? 0).toDouble();
+
+                // 💡 2. อัปเดตตาราง Bookings (เปลี่ยนสถานะเป็น cancel ทันที)
+                await FirebaseFirestore.instance.collection('bookings').doc(bId).update({
+                  'status': 'cancel', // ให้ตรงกับแท็บ Cancel ของฝั่ง Renter
+                  'cancel_reason': reason, // บันทึกเหตุผลให้ Renter ดู
+                });
+
+                // 💡 3. คืนเงินเข้า Wallet ของ Renter
+                await FirebaseFirestore.instance.collection('users').doc(rId).update({
+                  'wallet_balance': FieldValue.increment(refundAmount),
+                });
+
+                // 💡 4. สร้างประวัติทำรายการให้ Renter (Statement)
+                await FirebaseFirestore.instance.collection('transactions').add({
+                  'user_id': rId,
+                  'type': 'refund',
+                  'amount': refundAmount,
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'status': 'success',
+                  'description': 'Refund for cancelled booking (Owner declined)',
+                });
+
+                // 💡 5. ส่งการแจ้งเตือน (Notification) ไปหา Renter
+                await FirebaseFirestore.instance.collection('notifications').add({
+                  'user_id': rId,
+                  'target_role': 'Renter',
+                  'type': 'cancel',
+                  'title': 'Booking Declined by Owner',
+                  'message': 'Your rental request was declined. Reason: $reason. A full refund of ฿$refundAmount has been issued to your wallet.',
+                  'is_read': false,
+                  'created_at': FieldValue.serverTimestamp(),
+                });
+
+                if (pageContext.mounted) {
+                  Navigator.pop(confirmDialogContext); // ปิดหน้าโหลด
+                  Navigator.pop(pageContext); // ปิด Dialog Confirm
+                  Navigator.pop(pageContext); // ปิดหน้ารายละเอียด กลับไปหน้า Home ของ Owner
+                  ScaffoldMessenger.of(pageContext).showSnackBar(const SnackBar(content: Text('Rejection sent and refund processed.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.redAccent));
+                }
+              } catch (e) {
+                if (confirmDialogContext.mounted) Navigator.pop(confirmDialogContext); // ปิดหน้าโหลด
+                if (pageContext.mounted) {
+                  ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
             },
             child: const Text('Send to Renter', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),
@@ -445,21 +540,57 @@ class ScheduleDetailPage extends StatelessWidget {
     );
   }
 
-  void _showAcceptModal(BuildContext context, Map<String, dynamic> booking) {
+  void _showAcceptModal(BuildContext pageContext) {
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: pageContext,
+      barrierDismissible: false,
+      builder: (acceptDialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Accept Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
-        content: Text('Do you confirm to rent to ${booking['renterName']}?', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        content: Text('Do you confirm to rent to ${widget.booking['renterName']}?', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
+          TextButton(onPressed: () => Navigator.pop(acceptDialogContext), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF75DB73), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            onPressed: () {
-              Navigator.pop(context); 
-              Navigator.pop(context); 
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rental accepted successfully!', style: TextStyle(fontFamily: 'Poppins'))));
+            onPressed: () async {
+              // โชว์หมุนโหลด
+              showDialog(
+                context: acceptDialogContext, 
+                barrierDismissible: false, 
+                builder: (loadingContext) => const Center(child: CircularProgressIndicator())
+              );
+
+              try {
+                String bId = widget.booking['bookingId'];
+                String rId = widget.booking['renterId'];
+
+                await FirebaseFirestore.instance.collection('bookings').doc(bId).update({
+                  'status': 'accept',
+                });
+
+                await FirebaseFirestore.instance.collection('notifications').add({
+                  'user_id': rId,
+                  'target_role': 'Renter',
+                  'type': 'rent accepted',
+                  'title': 'Request Accepted!',
+                  'message': 'Your rental request for ${_vehicleData['vehicle_name'] ?? 'the vehicle'} has been accepted by the owner.',
+                  'is_read': false,
+                  'created_at': FieldValue.serverTimestamp(),
+                });
+
+                // ✅ เรียงลำดับการปิดหน้าต่างใหม่
+                if (pageContext.mounted) {
+                  Navigator.pop(acceptDialogContext); // 1. ปิดหน้าโหลด
+                  Navigator.pop(pageContext); // 2. ปิด Dialog ยืนยัน
+                  Navigator.pop(pageContext); // 3. ปิดหน้ารายละเอียด กลับไปหน้า Home ของ Owner
+                  ScaffoldMessenger.of(pageContext).showSnackBar(const SnackBar(content: Text('Rental accepted successfully!', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF2E8B57)));
+                }
+              } catch (e) {
+                if (acceptDialogContext.mounted) Navigator.pop(acceptDialogContext); // ปิดหน้าโหลด
+                if (pageContext.mounted) {
+                  ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
             },
             child: const Text('Confirm Rent', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),

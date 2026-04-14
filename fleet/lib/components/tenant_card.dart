@@ -7,12 +7,18 @@ class TenantCard extends StatelessWidget {
   const TenantCard({super.key, required this.booking});
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Accept': return const Color(0xFF2E8B57); 
-      case 'Complete': return const Color(0xFF28A4C9); 
-      case 'Cancel': return const Color(0xFFA52A2A); 
-      case 'Pending': return Colors.orange; 
-      case 'Using': return const Color.fromRGBO(172, 114, 161, 1.0); 
+    // 💡 ปรับให้เป็น toLowerCase() เพื่อรองรับข้อมูลจาก Firestore ได้แม่นยำขึ้น
+    switch (status.toLowerCase()) {
+      case 'accept': 
+      case 'accepted': return const Color(0xFF2E8B57); 
+      case 'complete': 
+      case 'completed': return const Color(0xFF28A4C9); 
+      case 'cancel': 
+      case 'cancelled': 
+      case 'reject': 
+      case 'rejected': return const Color(0xFFA52A2A); 
+      case 'pending': return Colors.orange; 
+      case 'using': return const Color.fromRGBO(172, 114, 161, 1.0); 
       default: return Colors.black;
     }
   }
@@ -23,12 +29,18 @@ class TenantCard extends StatelessWidget {
     Color statusColor = _getStatusColor(currentStatus);
     
     String renterName = booking['renterName'] ?? 'Unknown';
-    String rating = booking['rating'] ?? '0.0';
+    String rating = booking['rating']?.toString() ?? '0.0';
     String tel = booking['tel'] ?? '-';
     String startDate = booking['startDate'] ?? '-';
     String endDate = booking['endDate'] ?? '-';
     String startTime = booking['startTime'] ?? '-';
     String endTime = booking['endTime'] ?? '-';
+
+    // 💡 เช็คว่าเป็นรูปภาพจากเน็ตหรือในเครื่อง สำหรับ Avatar ผู้เช่า
+    String rImage = booking['renterImage'] ?? 'assets/icons/avatar.jpg';
+    ImageProvider avatarImage = rImage.startsWith('http') 
+        ? NetworkImage(rImage) 
+        : AssetImage(rImage) as ImageProvider;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -43,11 +55,11 @@ class TenantCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center, 
             children: [
-              // 💡 เปลี่ยนมาใช้ AssetImage สำหรับรูปในเครื่อง
-              const CircleAvatar(
+              // 💡 ใช้ avatarImage ที่เราเช็คไว้แล้ว
+              CircleAvatar(
                 radius: 28,
-                backgroundColor: Colors.transparent,
-                backgroundImage: AssetImage('assets/icons/avatar.jpg'), 
+                backgroundColor: Colors.grey.shade200,
+                backgroundImage: avatarImage, 
               ),
               const SizedBox(width: 15),
               
@@ -66,27 +78,26 @@ class TenantCard extends StatelessWidget {
                           ),
                         ),
 
-GestureDetector(
-  onTap: () {
-    // 💡 นำทางไปหน้ารีวิว และกำหนดให้เปิดแท็บผู้ใช้งาน (index: 1)
-    Navigator.push(context, MaterialPageRoute(
-  builder: (context) => const FleetEntityReviewPage(
-    isCar: false, 
-    entityName: 'User Reviews' // ใส่ชื่อคนได้ถ้ามีตัวแปร เช่น '${renter['name']} Reviews'
-  )
-));
-  },
-  child: Row(
-    children: [
-      const Icon(Icons.star, color: Color(0xFFFFD700), size: 18),
-      const SizedBox(width: 4),
-      Text(rating, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
-      const SizedBox(width: 8),
-      // 💡 เพิ่มข้อความเพื่อให้รู้ว่ากดเข้าไปอ่านรีวิวผู้ใช้คนนี้ได้
-      const Text('(Check Reviews)', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0))),
-    ],
-  ),
-),
+                        GestureDetector(
+                          onTap: () {
+                            // 💡 นำทางไปหน้ารีวิวผู้ใช้
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (context) => const FleetEntityReviewPage(
+                                isCar: false, 
+                                entityName: 'User Reviews' 
+                              )
+                            ));
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star, color: Color(0xFFFFD700), size: 18),
+                              const SizedBox(width: 4),
+                              Text(rating, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                              const SizedBox(width: 8),
+                              const Text('(Check Reviews)', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0))),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 5), 
@@ -106,7 +117,7 @@ GestureDetector(
                             children: [
                               Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
                               const SizedBox(width: 6),
-                              Text(currentStatus, style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text(currentStatus.toUpperCase(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
