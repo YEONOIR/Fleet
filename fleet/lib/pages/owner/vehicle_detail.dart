@@ -39,7 +39,17 @@ class VehicleDetailPage extends StatelessWidget {
           if (status != 'pending')
             IconButton(
               onPressed: () {
-                _showDeleteConfirmation(context);
+                // 💡 เช็คว่าสถานะเป็น using อยู่หรือไม่
+                if (status == 'using') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Can not delete the vehicles. Please complete all rental arrangements first.', style: TextStyle(fontFamily: 'Poppins', color: Colors.white)),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                } else {
+                  _showDeleteConfirmation(context);
+                }
               },
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 28),
             ),
@@ -156,9 +166,10 @@ class VehicleDetailPage extends StatelessWidget {
                                     GestureDetector(
                                       onTap: () {
                                         Navigator.push(context, MaterialPageRoute(
-                                          builder: (context) => const FleetEntityReviewPage(
+                                          builder: (context) => FleetEntityReviewPage(
                                             isCar: true, 
-                                            entityName: 'Vehicle Reviews'
+                                            entityName: 'Vehicle Reviews',
+                                            targetId: vehicle['id'] ?? '', 
                                           )
                                         ));
                                       },
@@ -224,7 +235,8 @@ class VehicleDetailPage extends StatelessWidget {
           if (status == 'available' || status == 'unavailable')
             Padding(
               padding: const EdgeInsets.all(20),
-              child: _buildActionButton(status),
+              // 💡 ส่ง context และ vehicle['id'] เข้าไปในฟังก์ชันด้วย
+              child: _buildActionButton(context, status, vehicle['id'] ?? ''),
             ),
         ],
       ),
@@ -242,7 +254,7 @@ class VehicleDetailPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        RenterInfoCard(
+       RenterInfoCard(
           name: renter['name'],
           phone: renter['phone'],
           rating: renter['rating'],
@@ -251,6 +263,7 @@ class VehicleDetailPage extends StatelessWidget {
           startTime: renter['startTime'],
           endTime: renter['endTime'],
           renterImage: renter['renterImage'],
+          renterId: renter['id'] ?? renter['renter_id'] ?? '', 
         ),
         const SizedBox(height: 25),
         Row(
@@ -315,7 +328,8 @@ class VehicleDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(String status) {
+  // 💡 เปลี่ยนจากรับแค่ status อย่างเดียว เป็นรับ context และ vehicleId ด้วย
+  Widget _buildActionButton(BuildContext context, String status, String vehicleId) {
     bool isAvailable = status == 'available';
     return SizedBox(
       width: double.infinity,
@@ -325,7 +339,46 @@ class VehicleDetailPage extends StatelessWidget {
           backgroundColor: isAvailable ? const Color(0xFFF07B75) : const Color(0xFF75DB73),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         ),
-        onPressed: () {},
+        onPressed: () async {
+          if (vehicleId.isEmpty) return;
+
+          // 💡 กำหนดสถานะใหม่ที่จะอัปเดต
+          String newStatus = isAvailable ? 'unavailable' : 'available';
+
+          // 💡 แสดง Popup วงแหวนโหลดขณะกำลังเปลี่ยนสถานะ
+          showDialog(
+            context: context, 
+            barrierDismissible: false, 
+            builder: (context) => const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)))
+          );
+
+          try {
+            // 💡 อัปเดตสถานะลง Firestore
+            await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
+              'status': newStatus,
+            });
+
+            if (context.mounted) {
+              Navigator.pop(context); // ปิดวงแหวนโหลด
+              
+              // 💡 แสดงแจ้งเตือน
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Vehicle status changed to $newStatus', style: const TextStyle(fontFamily: 'Poppins', color: Colors.white)),
+                  backgroundColor: isAvailable ? Colors.redAccent : Colors.green,
+                )
+              );
+              
+              // 💡 เด้งกลับไปหน้า Home เพื่อให้ตารางรถของ Owner โหลดใหม่
+              Navigator.pop(context, true); 
+            }
+          } catch (e) {
+            if (context.mounted) {
+              Navigator.pop(context); // ปิดวงแหวนโหลด
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating status: $e')));
+            }
+          }
+        },
         child: Text(
           isAvailable ? 'Set as unavailable' : 'Set as available',
           style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
@@ -369,7 +422,7 @@ class VehicleDetailPage extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) => AlertDialog( // ✅ 1. เปลี่ยนชื่อเป็น dialogContext
+      builder: (BuildContext dialogContext) => AlertDialog( 
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -384,7 +437,7 @@ class VehicleDetailPage extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext), // ✅ 2. ปิด Modal ด้วย dialogContext
+            onPressed: () => Navigator.pop(dialogContext), 
             child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))
           ),
           ElevatedButton(
@@ -393,7 +446,6 @@ class VehicleDetailPage extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
             ),
             onPressed: () async {
-              // ✅ 3. ปิด Dialog ด้วย dialogContext 
               Navigator.pop(dialogContext); 
 
               if (vehicleId.isEmpty) {
@@ -408,7 +460,6 @@ class VehicleDetailPage extends StatelessWidget {
                   'pending_type': 'Delete', 
                 });
 
-                // ✅ 4. ตอนนี้ context.mounted จะหมายถึงหน้า VehicleDetailPage จริงๆ แล้ว มันจะทำงานได้สำเร็จ
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -422,7 +473,7 @@ class VehicleDetailPage extends StatelessWidget {
                       ),
                     )
                   );
-                  Navigator.pop(context, true); // ✅ 5. เด้งกลับไปหน้า Owner Vehicle
+                  Navigator.pop(context, true); 
                 }
               } catch (e) {
                 print("Error requesting delete: $e");

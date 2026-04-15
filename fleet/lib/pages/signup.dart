@@ -114,8 +114,8 @@ class _SignUpPageState extends State<SignUpPage> {
         'role': userRole, // เพิ่ม Field นี้เพื่อคัดแยกประเภท! 
         'profile_image': '',
         'wallet_balance': 0,
-        'owner_rating': 0,
-        'renter_rating': 0,
+        // 💡 เอา 'owner_rating' ออกไปแล้ว
+        'renter_rating': 0, // 💡 ยังคงเก็บ renter_rating ไว้เพราะมีการให้คะแนนผู้เช่า
         'created_at': FieldValue.serverTimestamp(),
       });
 

@@ -134,6 +134,11 @@ class _RenterNotificationsPageState extends State<RenterNotificationsPage> {
                         'type': data['type'],
                         'is_read': data['is_read'],
                         'time': _formatTime(data['created_at'] as Timestamp?),
+                        // 💡 ต้องดึงข้อมูลพวกนี้แนบส่งไปให้ NotificationCard ด้วย
+                        'action_type': data['action_type'],
+                        'booking_id': data['booking_id'],
+                        'vehicle_id': data['vehicle_id'],
+                        'vehicle_name': data['vehicle_name'],
                       };
 
                       return NotificationCard(

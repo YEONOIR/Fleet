@@ -10,6 +10,7 @@ class RenterInfoCard extends StatelessWidget {
   final String startTime;
   final String endTime;
   final String renterImage;
+  final String renterId;
 
   const RenterInfoCard({
     super.key,
@@ -21,6 +22,7 @@ class RenterInfoCard extends StatelessWidget {
     required this.startTime,
     required this.endTime,
     required this.renterImage,
+    required this.renterId,
   });
 
   @override
@@ -68,9 +70,10 @@ class RenterInfoCard extends StatelessWidget {
               GestureDetector(
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => const FleetEntityReviewPage(
+                    builder: (context) => FleetEntityReviewPage( // 💡 เอา const ออก
                       isCar: false, 
-                      entityName: 'User Reviews' // ใส่ชื่อคนได้ถ้ามีตัวแปร เช่น '${renter['name']} Reviews'
+                      entityName: 'User Reviews',
+                      targetId: renterId, // 💡 ส่งค่า targetId ไป
                     )
                   ));
                 },

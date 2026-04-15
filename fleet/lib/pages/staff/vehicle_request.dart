@@ -149,7 +149,11 @@ class VehicleRequestPage extends StatelessWidget {
                                     const SizedBox(width: 15), 
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews')));
+                                        Navigator.push(context, MaterialPageRoute(builder: (context) => FleetEntityReviewPage( // 💡 เอา const ออก
+                                          isCar: true, 
+                                          entityName: 'Vehicle Reviews',
+                                          targetId: vehicleId, // 💡 เพิ่มบรรทัดนี้
+                                        )));
                                       },
                                       child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                                     ),

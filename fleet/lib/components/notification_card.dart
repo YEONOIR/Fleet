@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../pages/rating.dart'; // 💡 อย่าลืม import หน้า Rating ของเราเข้ามาด้วยนะ
 
 class NotificationCard extends StatelessWidget {
   final Map<String, dynamic> notification;
@@ -67,7 +68,26 @@ class NotificationCard extends StatelessWidget {
     final bool isRead = notification['is_read'] ?? false; 
 
     return GestureDetector(
-      onTap: onTap,
+      // 💡 ฝัง Logic การเปลี่ยนหน้าเข้าไปที่นี่เลย
+      onTap: () {
+        // 1. เช็คว่าเป็นการแจ้งเตือนให้ประเมินรถหรือไม่
+        if (notification['action_type'] == 'rate_vehicle') {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => RatingPage(
+              isRatingRenter: false, // ฝั่งผู้เช่าประเมินรถ
+              targetId: notification['vehicle_id'] ?? '',
+              bookingId: notification['booking_id'] ?? '',
+              targetName: notification['vehicle_name'] ?? 'the vehicle',
+              // targetImage: notification['vehicle_image'], // เปิดใช้บรรทัดนี้ถ้าตอนสร้าง Noti มีการส่ง URL รูปมาด้วย
+            ),
+          ));
+        }
+
+        // 2. เรียก onTap ที่ถูกส่งมาจาก Parent (เผื่อมีการอัปเดตสถานะ is_read ในหน้าหลัก)
+        if (onTap != null) {
+          onTap!();
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(15),

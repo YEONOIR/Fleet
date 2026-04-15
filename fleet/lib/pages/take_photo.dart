@@ -185,18 +185,33 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
       );
     // take_photo.dart (บรรทัดที่ 166 เป็นต้นไป)
     } else {
-      Navigator.push(
-          context, 
-          MaterialPageRoute(
-              builder: (context) => CheckHandInPage(
-                  vehicleName: widget.vehicleName, 
-                  afterImages: completedImages,
-                  // 💡 เปลี่ยนจาก ! เป็น ?? '' เพื่อกันไม่ให้แอปแครชเวลาเป็น null
-                  bookingId: widget.bookingId ?? '', 
-              )
-          )
-      );
-    }
+  final String bId = (widget.bookingId ?? '').trim();
+
+  // ตรวจก่อนนำทาง — ไม่ให้ผ่านไปพร้อม ID ว่าง
+  if (bId.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Error: Booking ID is missing. Cannot proceed.', style: TextStyle(fontFamily: 'Poppins')),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+    debugPrint('❌ TakePhoto → CheckHandIn: bookingId is empty!');
+    return;
+  }
+
+  debugPrint('✅ TakePhoto → CheckHandIn: bookingId = "$bId"');
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => CheckHandInPage(
+        vehicleName: widget.vehicleName,
+        afterImages: completedImages,
+        bookingId: bId,
+      ),
+    ),
+  );
+}
   }
   @override
   Widget build(BuildContext context) {

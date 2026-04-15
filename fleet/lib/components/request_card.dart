@@ -14,7 +14,6 @@ class RequestCard extends StatelessWidget {
     final startDateParts = request['Rent_Start'].toString().split(' ');
     final endDateParts = request['Rent Handin'].toString().split(' ');
 
-    // 💡 เช็คว่าเป็นรูปภาพจากเน็ตหรือในเครื่อง สำหรับ Avatar ผู้เช่า
     String rImage = request['renterImage'] ?? 'assets/icons/avatar.jpg';
     ImageProvider avatarImage = rImage.startsWith('http') 
         ? NetworkImage(rImage) 
@@ -42,7 +41,7 @@ class RequestCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 20, 
-                  backgroundImage: avatarImage, // 💡 ใช้ ImageProvider
+                  backgroundImage: avatarImage,
                   backgroundColor: Colors.grey.shade300,
                 ),
                 const SizedBox(width: 15),
@@ -96,7 +95,6 @@ class RequestCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
                 
-                // Vehicle Mini Card
                 VehicleMiniCard(
                   vName: request['vehicleData']['V Name'],
                   vRate: request['vehicleData']['V_Rate'],
@@ -113,9 +111,8 @@ class RequestCard extends StatelessWidget {
                 
                 // ปุ่ม Action
                 isRent
-                    ? GestureDetector( // กรณี Rent: ปุ่มเหลือง ไปหน้า Detail
+                    ? GestureDetector(
                         onTap: () {
-                          // 💡 แพ็คข้อมูลใหม่โดยใส่ bookingId เผื่อไว้ให้หน้า Schedule กด Accept
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -148,16 +145,32 @@ class RequestCard extends StatelessWidget {
                           ),
                         ),
                       )
-                    : GestureDetector( // กรณี Hand in: ปุ่มม่วง ไปหน้ากล้อง
+                    : GestureDetector(
                         onTap: () {
+                          // ✅ แก้ไข: ส่ง bookingId และ vehicleId ไปให้ TakePhotoPage ครบถ้วน
+                          final String bookingId = (request['bookingId'] ?? '').toString().trim();
+                          final String vehicleId = (request['vehicleData']['id'] ?? '').toString().trim();
+                          final String vehicleName = (request['vehicleData']['V Name'] ?? 'Vehicle').toString();
+
+                          if (bookingId.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Error: Booking ID is missing!', style: TextStyle(fontFamily: 'Poppins')),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
+
                           Navigator.push(
                             context, 
                             MaterialPageRoute(
                               builder: (context) => TakePhotoPage(
-                                vehicleName: request['vehicleData']['V Name'],
-                                vehicleId: request['vehicleData']['id'],
-                              )
-                            )
+                                vehicleName: vehicleName,
+                                vehicleId: vehicleId,
+                                bookingId: bookingId, // ✅ ส่ง bookingId ไปด้วยแล้ว
+                              ),
+                            ),
                           );
                         },
                         child: _buildAcceptButton(),
@@ -184,6 +197,7 @@ class RequestCard extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildAcceptButton() {
     return Container(
       width: double.infinity,

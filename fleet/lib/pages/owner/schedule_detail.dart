@@ -1,8 +1,9 @@
+import 'dart:io'; // 💡 นำเข้า dart:io เพื่อใช้โหลดรูปจาก Path ในเครื่อง
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 นำเข้า Firestore
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import '../../components/tenant_card.dart';
 import '../review_page.dart'; 
-import '../../utils/vehicle_utils.dart'; // 💡 นำเข้าเพื่อใช้ไอคอนพลังงาน
+import '../../utils/vehicle_utils.dart'; 
 import '../take_photo.dart';
 
 class ScheduleDetailPage extends StatefulWidget {
@@ -26,13 +27,14 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   }
 
   // ==========================================
-  // 💡 ฟังก์ชันดึงข้อมูลรถและการจองจาก Firestore (แก้ไขให้ดึง ID ชัวร์ๆ)
+  // 💡 ฟังก์ชันดึงข้อมูลรถและการจองจาก Firestore
   // ==========================================
   Future<void> _fetchRealData() async {
     try {
-      // 💡 จุดที่ 1: ดักจับทุกชื่อคีย์ที่เป็นไปได้ ห้ามลืมเด็ดขาด!
-      String bId = widget.booking['id'] ?? widget.booking['bookingId'] ?? '';
-      String vId = widget.booking['vehicle_id'] ?? widget.booking['vehicleId'] ?? '';
+      String bId = widget.booking['bookingId'] ?? widget.booking['id'] ?? '';
+      String vId = widget.booking['vehicleId'] ?? 
+                   widget.booking['vehicle_id'] ?? 
+                   (widget.booking['vehicleData'] != null ? widget.booking['vehicleData']['id'] : '');
 
       if (bId.isNotEmpty && vId.isNotEmpty) {
         var bDoc = await FirebaseFirestore.instance.collection('bookings').doc(bId).get();
@@ -41,17 +43,12 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
         if (bDoc.exists && vDoc.exists && mounted) {
           setState(() {
             _bookingData = bDoc.data() as Map<String, dynamic>;
-            // 💡 บังคับยัด ID ตัวจริงที่หาเจอใส่กลับเข้าไปใน Data เลย 
             _bookingData['id'] = bDoc.id; 
             
             _vehicleData = vDoc.data() as Map<String, dynamic>;
             _vehicleData['id'] = vDoc.id;
           });
-        } else {
-          print("Warning: Document not found in Firestore");
         }
-      } else {
-        print("Warning: bookingId ($bId) or vehicleId ($vId) is empty");
       }
     } catch (e) {
       print("Error fetching detail: $e");
@@ -79,9 +76,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
     }
   }
 
-  // ==========================================
-  // 1. วิดเจ็ต: แถบรูปภาพรถ (ดึงจาก Database)
-  // ==========================================
   Widget _buildImageGallery() {
     List<dynamic> images = _vehicleData['images'] ?? [];
     if (images.isEmpty) images = ['assets/images/car.jpg'];
@@ -109,9 +103,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
     );
   }
 
-  // ==========================================
-  // 2. วิดเจ็ต: ข้อมูลรถ (ดึงจาก Database)
-  // ==========================================
   Widget _buildVehicleInfo(BuildContext context, Color statusColor, String status) {
     String vFuel = _vehicleData['fuel'] ?? '-';
     
@@ -166,7 +157,11 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews'))),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FleetEntityReviewPage(
+                          isCar: true, 
+                          entityName: 'Vehicle Reviews', 
+                          targetId: _vehicleData['id'] ?? '' 
+                        ))),
                         child: Row(
                           children: [
                             const Icon(Icons.star, color: Colors.amber, size: 20),
@@ -177,7 +172,11 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                       ),
                       const SizedBox(width: 15), 
                       GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: false, entityName: 'User Reviews'))),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FleetEntityReviewPage(
+                          isCar: false, 
+                          entityName: 'User Reviews', 
+                          targetId: _bookingData['renter_id'] ?? widget.booking['renterId'] ?? '' 
+                        ))),
                         child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                       ),
                     ],
@@ -243,11 +242,84 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   }
 
   // ==========================================
-  // 3. วิดเจ็ต: แสดงส่วนล่างสุดแยกตาม Status
+  // 💡 Widget สำหรับแสดงรูประหว่างเช่า (อัปเดตให้รองรับ Local File Path)
   // ==========================================
+  Widget _buildRentImages(List<dynamic> images, String emptyText) {
+    if (images.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text(emptyText, style: const TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 13)),
+      );
+    }
+
+    return Container(
+      height: 140,
+      margin: const EdgeInsets.only(top: 10),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        itemBuilder: (context, index) {
+          String imgPath = images[index].toString().trim(); // 💡 ตัดช่องว่างทิ้งเผื่อ error
+          
+          Widget imageWidget;
+          if (imgPath.startsWith('http')) {
+            imageWidget = Image.network(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
+          } else if (imgPath.startsWith('/')) { // 💡 รองรับกรณีที่ข้อมูลเป็น Local File Path (เช่น /data/user/...)
+            imageWidget = Image.file(File(imgPath), fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
+          } else {
+            imageWidget = Image.asset(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
+          }
+
+          return Container(
+            width: 140,
+            margin: const EdgeInsets.only(right: 15),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.grey.shade200,
+            ),
+            clipBehavior: Clip.hardEdge,
+            child: imageWidget,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBeforeRentImages() {
+    List<dynamic> images = [];
+    if (_bookingData['before_images'] != null && (_bookingData['before_images'] as List).isNotEmpty) {
+      images = _bookingData['before_images'];
+    } else if (_bookingData['beforeImages'] != null && (_bookingData['beforeImages'] as List).isNotEmpty) {
+      images = _bookingData['beforeImages'];
+    } else if (_bookingData['photos_before'] != null && (_bookingData['photos_before'] as List).isNotEmpty) {
+      images = _bookingData['photos_before'];
+    } else if (widget.booking['beforeRentImages'] != null && (widget.booking['beforeRentImages'] as List).isNotEmpty) {
+      images = widget.booking['beforeRentImages'];
+    }
+    return _buildRentImages(images, 'No before-rent images available.');
+  }
+
+  Widget _buildAfterRentImages() {
+    List<dynamic> images = [];
+    // 💡 ค้นหาทุก Key ที่เป็นไปได้
+    if (_bookingData['after_images'] != null && (_bookingData['after_images'] as List).isNotEmpty) {
+      images = _bookingData['after_images'];
+    } else if (_bookingData['afterImages'] != null && (_bookingData['afterImages'] as List).isNotEmpty) {
+      images = _bookingData['afterImages'];
+    } else if (_bookingData['return_images'] != null && (_bookingData['return_images'] as List).isNotEmpty) {
+      images = _bookingData['return_images'];
+    } else if (_bookingData['handin_images'] != null && (_bookingData['handin_images'] as List).isNotEmpty) {
+      images = _bookingData['handin_images'];
+    } else if (_bookingData['photos_after'] != null && (_bookingData['photos_after'] as List).isNotEmpty) {
+      images = _bookingData['photos_after'];
+    } else if (widget.booking['afterRentImages'] != null && (widget.booking['afterRentImages'] as List).isNotEmpty) {
+      images = widget.booking['afterRentImages'];
+    }
+    return _buildRentImages(images, 'No after-rent images available.');
+  }
+
   Widget _buildDynamicBottomSection(BuildContext context, String status) {
     double totalPrice = (_bookingData['total_price'] ?? 0).toDouble();
-    // 💡 ดึงประเภทของ Pending มาเช็คว่าเป็น rent (ขอเช่า) หรือ return (ขอคืนรถ)
     String pendingType = _bookingData['pending_type'] ?? widget.booking['pendingType'] ?? 'rent'; 
 
     switch (status.toLowerCase()) {
@@ -256,7 +328,12 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
           return Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text('Pictures before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
+                _buildBeforeRentImages(),
+                const SizedBox(height: 20),
+
                 const Text('The renter has returned the vehicle. Please inspect it.', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.black54)),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -268,17 +345,33 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: () {
-                      // 💡 3. ดึง ID ชัวร์ๆ จากที่เรายัดไว้ใน _fetchRealData
+                      final String finalBookingId = (_bookingData['id'] ?? '').toString().trim().isNotEmpty
+                          ? _bookingData['id'].toString().trim()
+                          : (widget.booking['bookingId'] ?? widget.booking['id'] ?? '').toString().trim();
+
+                      final String finalVehicleId = (_vehicleData['id'] ?? '').toString().trim().isNotEmpty
+                          ? _vehicleData['id'].toString().trim()
+                          : (widget.booking['vehicleId'] ?? widget.booking['vehicle_id'] ??
+                            (widget.booking['vehicleData'] != null ? widget.booking['vehicleData']['id'] : '')).toString().trim();
+
+                      if (finalBookingId.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Error: Booking ID is missing!'), backgroundColor: Colors.redAccent),
+                        );
+                        return;
+                      }
+
                       Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TakePhotoPage(
-                          vehicleName: _vehicleData['vehicle_name'] ?? _vehicleData['brand'] ?? 'Check Return',
-                          bookingId: _bookingData['id'] ?? widget.booking['id'] ?? widget.booking['bookingId'] ?? '', 
-                          vehicleId: _vehicleData['id'] ?? widget.booking['vehicle_id'] ?? widget.booking['vehicleId'] ?? '', 
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TakePhotoPage(
+                            vehicleName: _vehicleData['vehicle_name'] ?? _vehicleData['brand'] ?? 'Check Return',
+                            bookingId: finalBookingId,
+                            vehicleId: finalVehicleId,
+                            isStaff: false, 
+                          ),
                         ),
-                      ),
-                    );
+                      );
                     },
                     child: const Text('Inspect Returned Vehicle', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
@@ -287,7 +380,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
             ),
           );
         } else {
-          // 💡 ถ้าเป็น Pending แบบขอเช่าปกติ ก็โชว์ปุ่ม Decline / Accept เหมือนเดิม
           return Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -340,10 +432,15 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                 ],
               ),
               const SizedBox(height: 20),
-              const Text('Pictures upon return', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              // สามารถเพิ่ม ListView แสดง after_images ตรงนี้ได้ในอนาคต
+              
+              const Text('Pictures before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
+              _buildBeforeRentImages(),
               const SizedBox(height: 20),
+
+              const Text('Pictures upon return', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
+              _buildAfterRentImages(), // 💡 เรียกใช้ฟังก์ชันที่อัปเดตแล้ว
+              const SizedBox(height: 20),
+
               const Text('Defect', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 5),
               Container(
@@ -371,9 +468,9 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                 ],
               ),
               const SizedBox(height: 20),
+
               const Text('Pictures before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              // สามารถเพิ่ม ListView แสดง before_images ตรงนี้ได้ในอนาคต
+              _buildBeforeRentImages(),
             ],
           ),
         );
@@ -459,7 +556,7 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
   }
 
   // ==========================================
-  // 💡 Modal Functions (แก้ปัญหาหมุนค้างและ Context ซ้อนทับ)
+  // 💡 Modal Functions 
   // ==========================================
   void _showRejectReasonModal(BuildContext pageContext) {
     TextEditingController reasonController = TextEditingController();
@@ -492,10 +589,8 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF07B75), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
-              Navigator.pop(dialogContext); // ✅ ปิด Dialog แรก (พิมพ์เหตุผล)
-              
-              // 💡 ส่ง pageContext ของหน้าหลักเข้าไปแทน ห้ามใช้ dialogContext เด็ดขาด!
-              _showConfirmRejectModal(pageContext, reasonController.text, widget.booking['renterName']);
+              Navigator.pop(dialogContext); 
+              _showConfirmRejectModal(pageContext, reasonController.text, widget.booking['renterName'] ?? 'the renter');
             },
             child: const Text('Next', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
           ),
@@ -517,7 +612,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () async {
-              // โชว์หมุนโหลด
               showDialog(
                 context: confirmDialogContext, 
                 barrierDismissible: false, 
@@ -525,27 +619,22 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
               );
 
               try {
-                // 💡 ป้องกัน Error ID เป็น Null ตอนกดยกเลิก
                 String bId = _bookingData['id'] ?? widget.booking['id'] ?? widget.booking['bookingId'] ?? '';
                 String rId = _bookingData['renter_id'] ?? widget.booking['renterId'] ?? '';
                 
                 if (bId.isEmpty) throw Exception("Booking ID is missing.");
 
-                // 💡 1. คำนวณเงินที่จะคืน (คืนมัดจำ + คืนค่าเช่าเต็มจำนวน เพราะ Owner ปฏิเสธเอง)
                 double refundAmount = (_bookingData['deposit_paid'] ?? 0).toDouble() + (_bookingData['total_price'] ?? 0).toDouble();
 
-                // 💡 2. อัปเดตตาราง Bookings (เปลี่ยนสถานะเป็น cancel ทันที)
                 await FirebaseFirestore.instance.collection('bookings').doc(bId).update({
-                  'status': 'cancel', // ให้ตรงกับแท็บ Cancel ของฝั่ง Renter
-                  'cancel_reason': reason, // บันทึกเหตุผลให้ Renter ดู
+                  'status': 'cancel', 
+                  'cancel_reason': reason, 
                 });
 
-                // 💡 3. คืนเงินเข้า Wallet ของ Renter
                 await FirebaseFirestore.instance.collection('users').doc(rId).update({
                   'wallet_balance': FieldValue.increment(refundAmount),
                 });
 
-                // 💡 4. สร้างประวัติทำรายการให้ Renter (Statement)
                 await FirebaseFirestore.instance.collection('transactions').add({
                   'user_id': rId,
                   'type': 'refund',
@@ -555,7 +644,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                   'description': 'Refund for cancelled booking (Owner declined)',
                 });
 
-                // 💡 5. ส่งการแจ้งเตือน (Notification) ไปหา Renter
                 await FirebaseFirestore.instance.collection('notifications').add({
                   'user_id': rId,
                   'target_role': 'Renter',
@@ -567,13 +655,13 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                 });
 
                 if (pageContext.mounted) {
-                  Navigator.pop(confirmDialogContext); // ปิดหน้าโหลด
-                  Navigator.pop(pageContext); // ปิด Dialog Confirm
-                  Navigator.pop(pageContext); // ปิดหน้ารายละเอียด กลับไปหน้า Home ของ Owner
+                  Navigator.pop(confirmDialogContext); 
+                  Navigator.pop(pageContext); 
+                  Navigator.pop(pageContext); 
                   ScaffoldMessenger.of(pageContext).showSnackBar(const SnackBar(content: Text('Rejection sent and refund processed.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.redAccent));
                 }
               } catch (e) {
-                if (confirmDialogContext.mounted) Navigator.pop(confirmDialogContext); // ปิดหน้าโหลด
+                if (confirmDialogContext.mounted) Navigator.pop(confirmDialogContext); 
                 if (pageContext.mounted) {
                   ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
@@ -593,13 +681,12 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
       builder: (acceptDialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Accept Request', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 14, 42, 1.0))),
-        content: Text('Do you confirm to rent to ${widget.booking['renterName']}?', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+        content: Text('Do you confirm to rent to ${widget.booking['renterName'] ?? 'the renter'}?', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(acceptDialogContext), child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontWeight: FontWeight.bold))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF75DB73), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () async {
-              // โชว์หมุนโหลด
               showDialog(
                 context: acceptDialogContext, 
                 barrierDismissible: false, 
@@ -607,7 +694,6 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
               );
 
               try {
-                // 💡 ป้องกัน Error ID เป็น Null ตอนกดยอมรับเช่นกัน
                 String bId = _bookingData['id'] ?? widget.booking['id'] ?? widget.booking['bookingId'] ?? '';
                 String rId = _bookingData['renter_id'] ?? widget.booking['renterId'] ?? '';
                 
@@ -627,15 +713,14 @@ class _ScheduleDetailPageState extends State<ScheduleDetailPage> {
                   'created_at': FieldValue.serverTimestamp(),
                 });
 
-                // ✅ เรียงลำดับการปิดหน้าต่างใหม่
                 if (pageContext.mounted) {
-                  Navigator.pop(acceptDialogContext); // 1. ปิดหน้าโหลด
-                  Navigator.pop(pageContext); // 2. ปิด Dialog ยืนยัน
-                  Navigator.pop(pageContext); // 3. ปิดหน้ารายละเอียด กลับไปหน้า Home ของ Owner
+                  Navigator.pop(acceptDialogContext); 
+                  Navigator.pop(pageContext); 
+                  Navigator.pop(pageContext); 
                   ScaffoldMessenger.of(pageContext).showSnackBar(const SnackBar(content: Text('Rental accepted successfully!', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF2E8B57)));
                 }
               } catch (e) {
-                if (acceptDialogContext.mounted) Navigator.pop(acceptDialogContext); // ปิดหน้าโหลด
+                if (acceptDialogContext.mounted) Navigator.pop(acceptDialogContext); 
                 if (pageContext.mounted) {
                   ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }

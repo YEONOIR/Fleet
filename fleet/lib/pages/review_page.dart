@@ -1,29 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../components/review_card.dart'; 
 
-class FleetEntityReviewPage extends StatelessWidget {
-  final bool isCar; // 💡 ตัวแปรบอกว่าเป็นรีวิวรถ (true) หรือรีวิวคน (false)
-  final String entityName; // 💡 ชื่อบน AppBar เช่น "Sukrit's Honda Reviews"
+class FleetEntityReviewPage extends StatefulWidget {
+  final bool isCar; 
+  final String entityName; 
+  final String targetId; 
 
   const FleetEntityReviewPage({
     super.key, 
     required this.isCar,
-    required this.entityName, // บังคับให้ส่งชื่อมาโชว์บนหัวเลย
+    required this.entityName,
+    required this.targetId,
   });
+
+  @override
+  State<FleetEntityReviewPage> createState() => _FleetEntityReviewPageState();
+}
+
+class _FleetEntityReviewPageState extends State<FleetEntityReviewPage> {
+
+  // ==========================================
+  // 💡 ฟังก์ชันดึงรีวิว และหาชื่อ+รูปคนรีวิวจาก Firestore
+  // ==========================================
+  Future<List<Map<String, dynamic>>> _fetchReviews() async {
+    String collectionName = widget.isCar ? 'vehicles' : 'users';
+    
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection(collectionName)
+        .doc(widget.targetId)
+        .collection('reviews')
+        .orderBy('created_at', descending: true)
+        .get();
+
+    List<Map<String, dynamic>> enrichedReviews = [];
+
+    for (var doc in snapshot.docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      String reviewerName = "Anonymous";
+      String reviewerImage = ""; // 💡 เพิ่มตัวแปรเก็บรูปโปรไฟล์
+
+      if (data['booking_id'] != null) {
+        try {
+          var bookingSnap = await FirebaseFirestore.instance.collection('bookings').doc(data['booking_id']).get();
+          if (bookingSnap.exists) {
+            var bData = bookingSnap.data() as Map<String, dynamic>;
+            
+            // 💡 หา ID ของคนรีวิว (ถ้ารีวิวรถ = Renter เป็นคนรีวิว | ถ้ารีวิวคน = Owner เป็นคนรีวิว)
+            String reviewerId = widget.isCar ? (bData['renter_id'] ?? '') : (bData['owner_id'] ?? '');
+
+            if (reviewerId.isNotEmpty) {
+              // 💡 วิ่งไปดึงข้อมูลจาก users collection
+              var userSnap = await FirebaseFirestore.instance.collection('users').doc(reviewerId).get();
+              if (userSnap.exists) {
+                reviewerName = userSnap['first_name'] ?? 'Anonymous'; // ดึง First Name
+                reviewerImage = userSnap['profile_image'] ?? '';      // ดึงรูป Profile
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint("Error fetching booking/user for review: $e");
+        }
+      }
+
+      data['reviewer_name'] = reviewerName;
+      data['reviewer_image'] = reviewerImage; // 💡 เก็บรูปลง Map เพื่อส่งไปให้ ReviewCard
+      enrichedReviews.add(data);
+    }
+
+    return enrichedReviews;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
-      
-      // ==========================================
-      // 💡 1. AppBar (เอา TabBar ออกไปแล้ว เหลือแค่ชื่อ)
-      // ==========================================
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          entityName, // โชว์ชื่อที่ส่งมา
+          widget.entityName, 
           style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white)
         ),
         flexibleSpace: Container(
@@ -36,105 +93,36 @@ class FleetEntityReviewPage extends StatelessWidget {
           ),
         ),
       ),
-      
-      // ==========================================
-      // 💡 2. แสดงรายการการ์ดรีวิวเพียวๆ เลย
-      // ==========================================
-      body: _buildReviewList(),
-    );
-  }
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchReviews(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)));
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(fontFamily: 'Poppins')));
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text(
+                'No reviews yet.', 
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 16, color: Colors.grey)
+              )
+            );
+          }
 
-  Widget _buildReviewList() {
-    // ข้อมูลจำลอง (Mock Data) สลับตาม isCar ที่ส่งมา
-    final List<Map<String, dynamic>> reviews = isCar
-        ? [
-            {"reviewer": "Nida K.", "rating": 5, "comment": "The car is very clean and the AC is super cold. Highly recommended!", "date": "10 Apr 2026"},
-            {"reviewer": "Somchai T.", "rating": 4, "comment": "Good condition overall, but there are some minor scratches on the left door.", "date": "5 Apr 2026"},
-            {"reviewer": "Alex M.", "rating": 5, "comment": "Smooth driving experience. Battery lasted longer than expected.", "date": "28 Mar 2026"},
-          ]
-        : [
-            {"reviewer": "Pimthida (Owner)", "rating": 5, "comment": "Very polite user. Returned the car on time and in perfect condition.", "date": "12 Apr 2026"},
-            {"reviewer": "Sukrit (Owner)", "rating": 5, "comment": "Easy to communicate with. Highly recommended renter.", "date": "2 Apr 2026"},
-          ];
+          final reviews = snapshot.data!;
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(20.0),
-      itemCount: reviews.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 15),
-      itemBuilder: (context, index) {
-        final review = reviews[index];
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: isCar ? const Color.fromRGBO(172, 114, 161, 0.1) : const Color.fromRGBO(7, 14, 42, 0.1),
-                child: Text(
-                  review['reviewer'][0], 
-                  style: TextStyle(
-                    fontFamily: 'Poppins', 
-                    fontWeight: FontWeight.bold,
-                    color: isCar ? const Color.fromRGBO(172, 114, 161, 1.0) : const Color.fromRGBO(7, 14, 42, 1.0),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 15),
-              
-              // เนื้อหารีวิว
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            review['reviewer'], 
-                            style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 14),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          review['date'], 
-                          style: const TextStyle(fontFamily: 'Poppins', color: Colors.grey, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (starIndex) => Icon(
-                          starIndex < review['rating'] ? Icons.star : Icons.star_border,
-                          color: const Color(0xFFFFD700),
-                          size: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      review['comment'], 
-                      style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.4, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+          return ListView.separated(
+            padding: const EdgeInsets.all(20.0),
+            itemCount: reviews.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 15),
+            itemBuilder: (context, index) {
+              return ReviewCard(review: reviews[index], isCar: widget.isCar);
+            },
+          ); // 💡 แก้ไขปิดวงเล็บให้สมบูรณ์
+        },
+      ),
     );
   }
 }

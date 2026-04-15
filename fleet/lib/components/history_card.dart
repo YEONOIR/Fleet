@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Import Firestore
 
 class HistoryCard extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -19,6 +20,7 @@ class HistoryCard extends StatelessWidget {
     
     // 💡 ดึงข้อมูล booking ออกมาเพื่อใช้วันที่
     Map<String, dynamic>? booking = car['booking']; 
+    String vehicleId = car['vehicle_id'] ?? car['id'] ?? ''; // 💡 ดึง ID รถ
 
     return GestureDetector(
       onTap: onTap,
@@ -56,7 +58,7 @@ class HistoryCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          car['name'] as String,
+                          car['name']?.toString() ?? 'Vehicle',
                           style: const TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 16,
@@ -76,14 +78,24 @@ class HistoryCard extends StatelessWidget {
                           children: [
                             const Icon(Icons.star, size: 14, color: Colors.white),
                             const SizedBox(width: 3),
-                            Text(
-                              (car['rating'] as num).toString(),
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                            // 💡 ใช้ FutureBuilder ดึง Rating สดๆ จาก Database ป้องกัน Error Null
+                            FutureBuilder<DocumentSnapshot>(
+                              future: vehicleId.isNotEmpty ? FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get() : null,
+                              builder: (context, snapshot) {
+                                double rating = double.tryParse(car['rating']?.toString() ?? '0') ?? 0.0;
+                                if (snapshot.hasData && snapshot.data!.exists) {
+                                  rating = (snapshot.data!['rating'] ?? 0).toDouble();
+                                }
+                                return Text(
+                                  rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              }
                             ),
                           ],
                         ),
@@ -122,16 +134,15 @@ class HistoryCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _detailRow(Icons.credit_card, 'License plate: ${car['plate']}'),
+                            _detailRow(Icons.credit_card, 'License plate: ${car['plate'] ?? '-'}'),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.directions_car_outlined, 'Model: ${car['model']}'),
+                            _detailRow(Icons.directions_car_outlined, 'Model: ${car['model'] ?? '-'}'),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.category_outlined, 'Type: ${car['type']}'),
+                            _detailRow(Icons.category_outlined, 'Type: ${car['type'] ?? '-'}'),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.location_on_outlined, car['address'] as String),
+                            _detailRow(Icons.location_on_outlined, car['address']?.toString() ?? '-'),
                             const SizedBox(height: 6),
                             
-                            // 💡 เปลี่ยนจาก Price เป็นช่วงวันที่เช่า
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [

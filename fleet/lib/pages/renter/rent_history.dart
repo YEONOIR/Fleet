@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'renter_your_rent.dart'; 
 import '../review_page.dart'; 
 import '../take_photo.dart'; // 💡 นำเข้าหน้าถ่ายรูป
+import '../rating.dart';
 
 class RentHistoryDetailPage extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -12,7 +13,8 @@ class RentHistoryDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int statusIndex = car['status'] as int;
+    // 💡 ป้องกัน Error กรณีรับ status เป็น String หรือ Null
+    final int statusIndex = int.tryParse(car['status']?.toString() ?? '4') ?? 4; 
     final String statusString = _getStatusString(statusIndex);
     final Color statusColor = _getStatusColor(statusIndex);
     
@@ -36,7 +38,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             ),
           ),
         ),
-        title: Text(car['name'] as String, style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(car['name']?.toString() ?? 'Vehicle', style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -84,11 +86,11 @@ class RentHistoryDetailPage extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildInfoColumn('License Plate', car['plate']),
+                                  _buildInfoColumn('License Plate', car['plate']?.toString() ?? '-'),
                                   const SizedBox(height: 20),
-                                  _buildInfoColumn('Brand', car['name'].toString().split("'s ").last),
+                                  _buildInfoColumn('Brand', car['name']?.toString().split("'s ").last ?? '-'),
                                   const SizedBox(height: 20),
-                                  _buildInfoColumn('Model', car['model']),
+                                  _buildInfoColumn('Model', car['model']?.toString() ?? '-'),
                                 ],
                               ),
                             ),
@@ -120,7 +122,7 @@ class RentHistoryDetailPage extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildInfoColumn('Vehicle Type', car['type']),
+                            _buildInfoColumn('Vehicle Type', car['type']?.toString() ?? '-'),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -130,11 +132,32 @@ class RentHistoryDetailPage extends StatelessWidget {
                                   children: [
                                     const Icon(Icons.star, color: Colors.amber, size: 20),
                                     const SizedBox(width: 5),
-                                    Text(car['rating'].toString(), style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                                    
+                                    // 💡 ใช้ FutureBuilder ดึงเรทติ้งจาก Firestore
+                                    FutureBuilder<DocumentSnapshot>(
+                                      future: (car['vehicle_id'] ?? car['id'] ?? '').toString().isNotEmpty 
+                                          ? FirebaseFirestore.instance.collection('vehicles').doc(car['vehicle_id'] ?? car['id']).get() 
+                                          : null,
+                                      builder: (context, snapshot) {
+                                        double rating = double.tryParse(car['rating']?.toString() ?? '0') ?? 0.0;
+                                        if (snapshot.hasData && snapshot.data!.exists) {
+                                          rating = (snapshot.data!['rating'] ?? 0).toDouble();
+                                        }
+                                        return Text(
+                                          rating.toStringAsFixed(1), 
+                                          style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)
+                                        );
+                                      }
+                                    ),
+
                                     const SizedBox(width: 15),
                                     GestureDetector(
                                       onTap: () {
-                                        Navigator.push(context, MaterialPageRoute(builder: (context) => const FleetEntityReviewPage(isCar: true, entityName: 'Vehicle Reviews')));
+                                        Navigator.push(context, MaterialPageRoute(builder: (context) => FleetEntityReviewPage( 
+                                          isCar: true, 
+                                          entityName: 'Vehicle Reviews',
+                                          targetId: car['vehicle_id'] ?? car['id'] ?? '', 
+                                        )));
                                       },
                                       child: const Text('Comment', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, decoration: TextDecoration.underline, color: Color.fromRGBO(172, 114, 161, 1.0), fontWeight: FontWeight.bold)),
                                     ),
@@ -155,7 +178,7 @@ class RentHistoryDetailPage extends StatelessWidget {
                               width: double.infinity,
                               padding: const EdgeInsets.all(15),
                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                              child: Text(car['address'] as String, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
+                              child: Text(car['address']?.toString() ?? 'No address provided', style: const TextStyle(fontFamily: 'Poppins', fontSize: 13)),
                             ),
                           ],
                         ),
@@ -164,8 +187,8 @@ class RentHistoryDetailPage extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildInfoColumn('Deposit (฿)', car['deposit'].toString()),
-                            _buildInfoColumn('Total Price (฿)', car['price'].toString()), 
+                            _buildInfoColumn('Deposit (฿)', car['deposit']?.toString() ?? '0'),
+                            _buildInfoColumn('Total Price (฿)', car['price']?.toString() ?? '0'), 
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -370,7 +393,7 @@ class RentHistoryDetailPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            (defect == null || defect.isEmpty) ? 'No defects reported' : defect,
+            (defect == null || defect.toString().isEmpty) ? 'No defects reported' : defect.toString(),
             style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.black87),
           ),
         ),
@@ -510,9 +533,9 @@ class RentHistoryDetailPage extends StatelessWidget {
               MaterialPageRoute(
                 builder: (context) => TakePhotoPage(
                   vehicleName: car['name'] ?? 'Pick Up Vehicle',
-                  bookingId: car['id'], // 💡 ส่ง Booking ID ไป
-                  vehicleId: car['vehicle_id'], // 💡 ส่ง Vehicle ID ไป
-                  isRenterPickUp: true, // 💡 ส่งค่าไปบอกว่า Renter กำลังมารับรถ!
+                  bookingId: car['id'], 
+                  vehicleId: car['vehicle_id'], 
+                  isRenterPickUp: true, 
                 )
               )
             );
@@ -520,19 +543,50 @@ class RentHistoryDetailPage extends StatelessWidget {
           child: const Text('Pick up the vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       );
+
     } else if (status == 'USING') {
       return SizedBox(
         width: double.infinity,
         height: 55,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromRGBO(172, 114, 161, 1.0),
+            backgroundColor: const Color.fromRGBO(172, 114, 161, 1.0), // ใช้สีม่วง
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           ),
-          onPressed: () => _showReturnConfirmationModal(context), 
-          child: const Text('Return Vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          onPressed: () => _showReturnConfirmationModal(context), // เรียกใช้ Modal คืนรถที่มีอยู่แล้ว
+          child: const Text('Return the vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
         ),
       );
+
+    } else if (status == 'COMPLETE') {
+      final booking = car['booking'];
+      bool isVehicleRated = booking?['is_vehicle_rated'] ?? false;
+
+      if (!isVehicleRated) {
+        return SizedBox(
+          width: double.infinity,
+          height: 55,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE8D354), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            ),
+            onPressed: () {
+              // 💡 เรียกหน้า Rating แบบระบุว่าเป็นฝั่ง Renter ประเมินรถ (isRatingRenter: false)
+              Navigator.push(context, MaterialPageRoute(builder: (context) => RatingPage(
+                isRatingRenter: false, 
+                targetId: car['vehicle_id'],
+                bookingId: car['id'],
+                targetName: car['name'] ?? 'this vehicle',
+                targetImage: (car['images'] != null && (car['images'] as List).isNotEmpty) 
+                    ? car['images'][0].toString() 
+                    : car['image'],
+              )));
+            },
+            child: const Text('Rate This Vehicle', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          ),
+        );
+      }
     }
     return const SizedBox.shrink();
   }
@@ -710,11 +764,15 @@ class RentHistoryDetailPage extends StatelessWidget {
                 
                 if (context.mounted) {
                   Navigator.pop(context); // ปิด Loading
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RenterYourRentPage(initialIndex: 4)), 
-                    (route) => false, 
+                  
+                  // 💡 แก้ให้วิ่งไปที่หน้า /renter (Main) แทน เพื่อรักษา Navbar ไว้
+                  Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    '/renter', 
+                    (route) => false,
+                    arguments: {'mainIndex': 1, 'tabIndex': 4}, // mainIndex 1 = หน้า Your Rent, tabIndex 4 = หน้า Pending
                   );
+                  
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle returned. Waiting for owner confirmation.', style: TextStyle(fontFamily: 'Poppins')), backgroundColor: Color(0xFF2E7D6E)));
                 }
               } catch (e) {
