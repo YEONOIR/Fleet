@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'pages/login.dart';
+// import 'pages/login.dart';
 import 'pages/signup.dart';
 import 'pages/renter/renter_profile.dart';
 import 'pages/renter/renter_main.dart';
@@ -8,17 +7,9 @@ import 'pages/renter/renter_topup.dart';
 import 'pages/owner/owner_main.dart';
 import 'pages/owner/owner_profile.dart';
 import 'pages/staff/staff_main.dart';
-import 'firebase_options.dart';
+import 'mockup/temp_role_selector.dart';
 
-void main() async {
-  // ต้องมีบรรทัดนี้เพื่อให้ Flutter เตรียมความพร้อมก่อนรัน Firebase
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // โหลดการตั้งค่า Firebase ที่เราทำไว้ในขั้นตอนที่ 2
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
+void main() {
   runApp(const MainApp());
 }
 
@@ -29,12 +20,12 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fleet',
-      // ลบ home: const TempRoleSelector(), ออกไปเลย เพื่อป้องกันการทำงานซ้ำซ้อน
+      home: const TempRoleSelector(),
       debugShowCheckedModeBanner: false,
-      initialRoute: '/', // บอกให้แอปเริ่มต้นที่ Route '/'
+      initialRoute: '/',
       routes: {
-        // เปิดใช้งาน Route '/' ให้ชี้ไปที่หน้า LoginPage
-        '/': (context) => const LoginPage(),
+        // hide this for mock up test
+        // '/': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
         '/renter': (context) => const RenterMainPage(),
         '/renter/topup': (context) => const RenterTopUpPage(),

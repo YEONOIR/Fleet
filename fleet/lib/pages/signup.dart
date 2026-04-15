@@ -1,8 +1,7 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // เพิ่ม Import Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // เพิ่ม Import Firestore
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -22,8 +21,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _addressController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _isLoading = false; // ตัวแปรจัดการสถานะ Loading
-  DateTime? _selectedDate; // ตัวแปรเก็บวันที่แบบ Date Object เพื่อส่งเข้า Firestore
 
   @override
   void dispose() {
@@ -60,16 +57,13 @@ class _SignUpPageState extends State<SignUpPage> {
     );
     if (picked != null) {
       setState(() {
-        _selectedDate = picked; // เก็บค่า Date เอาไว้
         _dobController.text =
             '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
       });
     }
   }
 
-  // แก้ไขฟังก์ชัน _handleSignUp เพื่อเชื่อม Firebase
-  // แก้ไขฟังก์ชัน _handleSignUp เพื่อเพิ่มระบบ Role (ประเภทผู้ใช้)
-  Future<void> _handleSignUp() async {
+  void _handleSignUp() {
     if (_nameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||
         _phoneController.text.trim().isEmpty ||
@@ -81,73 +75,12 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // 1. สมัครสมาชิกผ่าน Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      String uid = userCredential.user!.uid;
-
-      // --- ส่วนการคัดแยกประเภท (Logic การแบ่ง Role) ---
-      String userRole = 'user'; // ค่าเริ่มต้นคือผู้ใช้ทั่วไป
-      
-      // ตัวอย่างเงื่อนไขพิเศษ: ถ้าใช้อีเมลบริษัท ให้เป็น staff อัตโนมัติ (เลือกใช้หรือไม่ก็ได้)
-      if (_emailController.text.trim().endsWith('@fleet-admin.com')) {
-        userRole = 'staff';
-      }
-
-      // 2. บันทึกข้อมูลลง Firestore พร้อมระบุ role
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'first_name': _nameController.text.trim(),
-        'last_name': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'address': _addressController.text.trim(),
-        'dob': _selectedDate != null ? Timestamp.fromDate(_selectedDate!) : null,
-        'id_card': _idCardController.text.trim(),
-        'role': userRole, // เพิ่ม Field นี้เพื่อคัดแยกประเภท! 
-        'profile_image': '',
-        'wallet_balance': 0,
-        'owner_rating': 0,
-        'renter_rating': 0,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign up successful as $userRole! 🎉')),
-        );
-        Navigator.pop(context);
-      }
-    } on FirebaseAuthException catch (e) {
-      // จัดการ Error แจ้งเตือนผู้ใช้
-      String errorMessage = 'An error occurred. Please try again.';
-      if (e.code == 'weak-password') {
-        errorMessage = 'The password provided is too weak.';
-      } else if (e.code == 'email-already-in-use') {
-        errorMessage = 'The account already exists for that email.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is not valid.';
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-      }
-   } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    // TODO: Collect user data and save to cloud storage
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cloud storage not connected yet'),
+      ),
+    );
   }
 
   @override
@@ -323,8 +256,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             ),
                           ),
                           child: ElevatedButton(
-                            // ปิดการกดปุ่มระหว่างโหลด
-                            onPressed: _isLoading ? null : _handleSignUp,
+                            onPressed: _handleSignUp,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
@@ -332,25 +264,15 @@ class _SignUpPageState extends State<SignUpPage> {
                                 borderRadius: BorderRadius.circular(30),
                               ),
                             ),
-                            // แสดงวงแหวนโหลดถ้า _isLoading เป็น true
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Sign - up',
-                                    style: TextStyle(
-                                      fontFamily: "Poppins",
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                            child: const Text(
+                              'Sign - up',
+                              style: TextStyle(
+                                fontFamily: "Poppins",
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
                       ),
