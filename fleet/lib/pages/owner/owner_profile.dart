@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../edit_profile.dart';
 
 class OwnerProfilePage extends StatelessWidget {
   const OwnerProfilePage({super.key});
@@ -101,18 +100,10 @@ class OwnerProfilePage extends StatelessWidget {
 
                   const SizedBox(height: 35),
 
-                  // 💡 2. อัปเดตปุ่ม Edit Profile ของ Owner
                   _buildProfileMenu(
                     icon: Icons.edit_outlined,
                     title: 'Edit profile',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfilePage(), // 💡 พาไปหน้า EditProfilePage
-                        ),
-                      );
-                    },
+                    onTap: () {},
                   ),
 
                   // toggle button
@@ -202,7 +193,7 @@ class OwnerProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.08),
+            color: Colors.grey.withOpacity(0.08),
             spreadRadius: 1,
             blurRadius: 10,
             offset: const Offset(0, 4),
@@ -215,7 +206,7 @@ class OwnerProfilePage extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isLogout
-                ? Colors.red.withValues(alpha: 0.1)
+                ? Colors.red.withOpacity(0.1)
                 : const Color.fromRGBO(172, 114, 161, 0.1),
             shape: BoxShape.circle,
           ),
