@@ -142,9 +142,6 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // --- ส่วนอื่น ๆ ของ UI (GridView, Build Method) คงเดิมตามที่คุณส่งมา ---
-  // ... (เพื่อความกระชับ ฉันละส่วน UI ไว้แต่คุณสามารถใช้ UI เดิมได้เลย)
-  
   void _goToNextPage() {
     List<File> completedImages = afterImages.whereType<File>().toList();
     if (widget.isRenterPickUp) {
@@ -152,70 +149,65 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
       return; 
     }
     
-    // Logic การเปลี่ยนหน้าอื่น ๆ (Staff, New Vehicle) ก็ยังคงเหมือนเดิม
-    // เพียงแต่ถ้าหน้าเหล่านั้นต้องอัปโหลดรูปด้วย คุณอาจจะต้องปรับให้ใช้ _uploadImageToImgBB เช่นกัน
     _navigateBasedOnContext(completedImages);
   }
 
- // take_photo.dart (บรรทัดที่ 166)
-
   void _navigateBasedOnContext(List<File> completedImages) {
     List<String> allImagePaths = completedImages.map((file) => file.path).toList();
+    
     if (widget.isStaff) {
       Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => CheckVehiclePage(
-                  vehicleId: widget.vehicleId!, 
-                  vehicleName: widget.vehicleName,
-                  ownerId: widget.ownerId!, 
-                  ownerImages: widget.ownerImages ?? [], 
-                  staffImages: completedImages
-              )
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckVehiclePage(
+            vehicleId: widget.vehicleId!, 
+            vehicleName: widget.vehicleName,
+            ownerId: widget.ownerId!, 
+            ownerImages: widget.ownerImages ?? [], 
+            staffImages: completedImages
           )
+        )
       );
     } else if (widget.vehicleName == 'Edit Photos') {
       Navigator.pop(context, allImagePaths);
     } else if (widget.vehicleName == 'New Vehicle') {
       Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(
-              builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths)
-          )
+        context, 
+        MaterialPageRoute(
+          builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths)
+        )
       );
-    // take_photo.dart (บรรทัดที่ 166 เป็นต้นไป)
     } else {
-  final String bId = (widget.bookingId ?? '').trim();
+      final String bId = (widget.bookingId ?? '').trim();
 
-  // ตรวจก่อนนำทาง — ไม่ให้ผ่านไปพร้อม ID ว่าง
-  if (bId.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error: Booking ID is missing. Cannot proceed.', style: TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
-    debugPrint('❌ TakePhoto → CheckHandIn: bookingId is empty!');
-    return;
+      if (bId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Booking ID is missing. Cannot proceed.', style: TextStyle(fontFamily: 'Poppins')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        debugPrint('❌ TakePhoto → CheckHandIn: bookingId is empty!');
+        return;
+      }
+
+      debugPrint('✅ TakePhoto → CheckHandIn: bookingId = "$bId"');
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckHandInPage(
+            vehicleName: widget.vehicleName,
+            afterImages: completedImages,
+            bookingId: bId,
+          ),
+        ),
+      );
+    }
   }
 
-  debugPrint('✅ TakePhoto → CheckHandIn: bookingId = "$bId"');
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CheckHandInPage(
-        vehicleName: widget.vehicleName,
-        afterImages: completedImages,
-        bookingId: bId,
-      ),
-    ),
-  );
-}
-  }
   @override
   Widget build(BuildContext context) {
-    // ใช้ Build Method เดิมของคุณได้เลยครับ
     return _buildMainUI(); 
   }
 
@@ -279,8 +271,48 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     );
   }
 
+  // ==========================================
+  // 💡 แสดง Modal หรือเปิดกล้องตามเงื่อนไข
+  // ==========================================
   void _showPickerOptions(int index) {
-    // ใช้ logic เดิมที่คุณเขียนไว้ได้เลยครับ
-    _pickImage(index, ImageSource.camera);
+    bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
+
+    // 💡 ถ้าไม่ใช่หน้าเพิ่มรถหรือแก้ไขรูป ให้บังคับเปิดกล้องทันทีเพื่อป้องกันการเอารูปในอัลบั้มมาใช้
+    if (!isNewVehicle) {
+      _pickImage(index, ImageSource.camera);
+      return;
+    }
+
+    // 💡 โชว์ Modal เลือกรูปเฉพาะตอนลงทะเบียนรถใหม่หรือแก้รูปเท่านั้น
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: Color(0xFF070E2A)),
+                title: const Text('Take a photo', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                onTap: () {
+                  _pickImage(index, ImageSource.camera);
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color(0xFFAC72A1)),
+                title: const Text('Choose from gallery', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                onTap: () {
+                  _pickImage(index, ImageSource.gallery);
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

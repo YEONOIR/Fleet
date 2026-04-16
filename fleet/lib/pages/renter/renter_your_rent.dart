@@ -43,8 +43,11 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     [Color(0xFFE6A817), Color(0xFFFFF176)], 
   ];
   
-  // 💡 ลบข้อมูลจำลองทิ้งให้หมด แล้วเปลี่ยนเป็นลิสต์ว่างๆ (กล่องเปล่า) 
   List<Map<String, dynamic>> _rentData = [];
+
+  // 💡 สร้าง Cache เพื่อเก็บข้อมูลรถและเจ้าของรถที่ดึงมาแล้ว (ช่วยให้โหลดซ้ำไวขึ้น)
+  final Map<String, Map<String, dynamic>> _vehicleCache = {};
+  final Map<String, Map<String, dynamic>> _userCache = {};
 
   @override
   void initState() {
@@ -58,12 +61,11 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       if (!_tabController.indexIsChanging) setState(() {});
     });
 
-    // 💡 เริ่มโหลดข้อมูลจาก Firebase เมื่อเปิดหน้า
     _fetchRentHistoryFromFirebase();
   }
 
   // ==========================================
-  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (แบบ Join 2 ตาราง)
+  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (Optimized เร็วขึ้น)
   // ==========================================
   Future<void> _fetchRentHistoryFromFirebase() async {
     try {
@@ -79,6 +81,44 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           .get();
 
       if (snap.docs.isNotEmpty) {
+        // 💡 1. รวบรวม ID ของรถและเจ้าของที่ยังไม่มีใน Cache
+        Set<String> missingVehicles = {};
+        Set<String> missingOwners = {};
+
+        for (var doc in snap.docs) {
+          var data = doc.data() as Map<String, dynamic>;
+          String vId = data['vehicle_id'] ?? '';
+          String oId = data['owner_id'] ?? '';
+
+          if (vId.isNotEmpty && !_vehicleCache.containsKey(vId)) missingVehicles.add(vId);
+          if (oId.isNotEmpty && !_userCache.containsKey(oId)) missingOwners.add(oId);
+        }
+
+        // 💡 2. ยิง Request ดึงข้อมูลทั้งหมดที่ขาดแบบขนานกัน (Parallel)
+        List<Future<void>> fetchTasks = [];
+        
+        for (String vid in missingVehicles) {
+          fetchTasks.add(FirebaseFirestore.instance.collection('vehicles').doc(vid).get().then((doc) {
+            if (doc.exists && doc.data() != null) {
+              _vehicleCache[vid] = doc.data() as Map<String, dynamic>;
+            }
+          }).catchError((_) {}));
+        }
+
+        for (String oid in missingOwners) {
+          fetchTasks.add(FirebaseFirestore.instance.collection('users').doc(oid).get().then((doc) {
+            if (doc.exists && doc.data() != null) {
+              _userCache[oid] = doc.data() as Map<String, dynamic>;
+            }
+          }).catchError((_) {}));
+        }
+
+        // รอโหลดข้อมูลที่ขาดให้เสร็จพร้อมกัน
+        if (fetchTasks.isNotEmpty) {
+          await Future.wait(fetchTasks);
+        }
+
+        // 💡 3. นำข้อมูลมาประกอบเข้าด้วยกัน (ไวมากๆ เพราะไม่ต้องรอ await ในลูปแล้ว)
         List<Map<String, dynamic>> realData = [];
         
         for (var doc in snap.docs) {
@@ -92,44 +132,23 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'reject' || dbStatus == 'rejected') statusCode = 3;
           else statusCode = 4; 
 
-          // 💡 วิ่งไปหาข้อมูลรถเพิ่มเติมจากตาราง vehicles
+          // ดึงข้อมูลรถจาก Cache
           String vehicleId = data['vehicle_id'] ?? '';
-          String vName = 'Unknown Vehicle';
-          String vPlate = '-';
-          String vModel = '-';
-          String vType = 'Car';
-          String vImage = 'assets/images/car.jpg';
-          String vAddress = 'No address';
-          String vFuel = '-';
-          List<dynamic> vImages = [];
+          final vd = _vehicleCache[vehicleId] ?? {};
+          String vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
+          String vPlate = vd['license_plate'] ?? '-';
+          String vModel = vd['model'] ?? '-';
+          String vType = vd['vehicle_type'] ?? 'Car';
+          String vAddress = vd['address'] ?? 'No address';
+          String vFuel = vd['fuel'] ?? '-';
+          List<dynamic> vImages = vd['images'] ?? [];
+          String vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
 
-          if (vehicleId.isNotEmpty) {
-            var vDoc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
-            if (vDoc.exists) {
-               var vd = vDoc.data() as Map<String, dynamic>;
-               vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
-               vPlate = vd['license_plate'] ?? '-';
-               vModel = vd['model'] ?? '-';
-               vType = vd['vehicle_type'] ?? 'Car';
-               vAddress = vd['address'] ?? 'No address';
-               vFuel = vd['fuel'] ?? '-'; // 💡 ดึงประเภทน้ำมันมาแล้ว
-               vImages = vd['images'] ?? []; // 💡 ดึงรูปภาพทั้งหมดมาแล้ว
-               vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
-            }
-          }
-
-          // 💡 ไปดึงข้อมูลเจ้าของรถด้วย owner_id
+          // ดึงข้อมูลเจ้าของรถจาก Cache
           String ownerId = data['owner_id'] ?? '';
-          String oName = 'Owner';
-          String oPhone = '-';
-          if (ownerId.isNotEmpty) {
-            var oDoc = await FirebaseFirestore.instance.collection('users').doc(ownerId).get();
-            if (oDoc.exists) {
-               var od = oDoc.data() as Map<String, dynamic>;
-               oName = od['first_name'] ?? 'Owner';
-               oPhone = od['phone'] ?? '-';
-            }
-          }
+          final od = _userCache[ownerId] ?? {};
+          String oName = od['first_name'] ?? 'Owner';
+          String oPhone = od['phone'] ?? '-';
 
           String formatDate(Timestamp? ts) {
             if (ts == null) return 'N/A';
@@ -173,7 +192,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
             'afterRentImages': data['after_images'] ?? [],
             'pendingType': data['pending_type'] ?? 'rent',
             'defect': data['handin_defect'] ?? '',
-            // 💡 เพิ่มตัวแปร cancelReason เข้าไปตรงนี้ครับ
             'cancelReason': data['cancel_reason'] ?? data['reject_reason'] ?? 'Cancelled by Owner',
             'created_at': data['created_at'] 
           });

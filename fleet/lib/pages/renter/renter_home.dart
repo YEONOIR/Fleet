@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../components/vehicle_info_card.dart'; 
 import 'vehicle_rent_detail.dart';
+import '../../components/fleet_map.dart';
 
 class RenterHomePage extends StatefulWidget { 
   const RenterHomePage({super.key});
@@ -111,7 +112,7 @@ class _RenterHomePageState extends State<RenterHomePage> {
             const SizedBox(height: 24),
             
             // ── Map Section ──
-            _buildMapSection(),
+            FleetMap(currentLocation: _currentLocation),
             const SizedBox(height: 24),
 
             const Padding(
@@ -331,102 +332,6 @@ class _RenterHomePageState extends State<RenterHomePage> {
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================
-  // 💡 3. เปลี่ยนจากภาพวาดเป็นแผนที่ของจริง
-  // ==========================================
-  Widget _buildMapSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Find Vehicles near you',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF070E2A),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            height: 200, // ขยายความสูงแผนที่นิดนึงให้ดูง่ายขึ้น
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: _currentLocation, // จุดศูนย์กลางแผนที่
-                  initialZoom: 14.5, // ระดับการซูม (ยิ่งเยอะยิ่งใกล้)
-                ),
-                children: [
-                  // 💡 ตัวดึงภาพแผนที่มาจาก OpenStreetMap (ฟรี)
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.fleet.app',
-                  ),
-                  // 💡 ชั้นสำหรับวางหมุดต่างๆ บนแผนที่
-                  MarkerLayer(
-                    markers: [
-                      // หมุดตำแหน่งของเราเอง
-                      Marker(
-                        point: _currentLocation,
-                        width: 60,
-                        height: 60,
-                        child: const Icon(
-                          Icons.location_on,
-                          color: Color(0xFF070E2A),
-                          size: 40,
-                        ),
-                      ),
-                      // หมุดตัวอย่างรถคันที่ 1
-                      Marker(
-                        point: const LatLng(13.7960, 100.3260),
-                        width: 40,
-                        height: 40,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE91E63),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.directions_car, color: Colors.white, size: 20),
-                        ),
-                      ),
-                      // หมุดตัวอย่างมอเตอร์ไซค์
-                      Marker(
-                        point: const LatLng(13.7920, 100.3210),
-                        width: 40,
-                        height: 40,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF9C27B0),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.two_wheeler, color: Colors.white, size: 20),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ),
             ),
           ),

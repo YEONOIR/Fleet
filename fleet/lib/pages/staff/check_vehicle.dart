@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../components/reject_modal.dart'; 
 // 💡 นำเข้า StaffMainPage เพื่อรักษาระยะ Navbar
 import 'staff_main.dart'; 
+import '../../components/full_screen_image.dart'; // 💡 นำเข้าหน้า FullScreen ถูกต้องแล้วค่ะ
 
 class CheckVehiclePage extends StatelessWidget {
   final String vehicleId; 
@@ -80,15 +81,27 @@ class CheckVehiclePage extends StatelessWidget {
                       itemCount: ownerImages.isEmpty ? 1 : ownerImages.length,
                       itemBuilder: (context, index) {
                         String imgPath = ownerImages.isNotEmpty ? ownerImages[index] : '';
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 15),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: ownerImages.isNotEmpty 
-                              ? (imgPath.startsWith('http') 
-                                  ? Image.network(imgPath, fit: BoxFit.cover, width: 250, errorBuilder: (ctx, err, stack) => Container(width: 250, color: Colors.grey[300], child: const Icon(Icons.broken_image)))
-                                  : Image.asset(imgPath, fit: BoxFit.cover, width: 250))
-                              : Image.asset('assets/images/car.jpg', fit: BoxFit.cover, width: 250),
+                        
+                        // 💡 แก้ไข 1: เพิ่ม GestureDetector ครอบ Padding เอาไว้
+                        return GestureDetector(
+                          onTap: () {
+                            if (imgPath.isNotEmpty) {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImage(
+                                imageUrl: imgPath.startsWith('http') ? imgPath : null,
+                                imageAsset: !imgPath.startsWith('http') ? imgPath : null,
+                              )));
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 15),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: ownerImages.isNotEmpty 
+                                ? (imgPath.startsWith('http') 
+                                    ? Image.network(imgPath, fit: BoxFit.cover, width: 250, errorBuilder: (ctx, err, stack) => Container(width: 250, color: Colors.grey[300], child: const Icon(Icons.broken_image)))
+                                    : Image.asset(imgPath, fit: BoxFit.cover, width: 250))
+                                : Image.asset('assets/images/car.jpg', fit: BoxFit.cover, width: 250),
+                            ),
                           ),
                         );
                       }
@@ -108,14 +121,23 @@ class CheckVehiclePage extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: staffImages.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(right: 15),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.file(
-                            staffImages[index],
-                            fit: BoxFit.cover,
-                            width: 250,
+                      
+                      // 💡 แก้ไข 2: เพิ่ม GestureDetector ครอบ Padding เอาไว้
+                      itemBuilder: (context, index) => GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImage(
+                            imageFile: staffImages[index], // ส่งไฟล์ภาพจากเครื่องไป
+                          )));
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.file(
+                              staffImages[index],
+                              fit: BoxFit.cover,
+                              width: 250,
+                            ),
                           ),
                         ),
                       ),
@@ -192,7 +214,7 @@ class CheckVehiclePage extends StatelessWidget {
                       onPressed: () async {
                         try {
                           await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).update({
-                            'status': 'available' // 💡 แก้สถานะเป็น available แล้ว
+                            'status': 'available'
                           });
 
                           await _sendNotificationToOwner(

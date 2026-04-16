@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // เพิ่ม Import Auth
 import 'package:cloud_firestore/cloud_firestore.dart'; // เพิ่ม Import Firestore
+import 'package:firebase_core/firebase_core.dart'; // 💡 เพิ่มบรรทัดนี้เข้ามา
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -67,8 +68,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  // แก้ไขฟังก์ชัน _handleSignUp เพื่อเชื่อม Firebase
-  // แก้ไขฟังก์ชัน _handleSignUp เพื่อเพิ่มระบบ Role (ประเภทผู้ใช้)
+ // แก้ไขฟังก์ชัน _handleSignUp โดยใช้ Temporary App แก้บัคเด้งไปหน้าหลัก
   Future<void> _handleSignUp() async {
     if (_nameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||
@@ -85,9 +85,18 @@ class _SignUpPageState extends State<SignUpPage> {
       _isLoading = true;
     });
 
+    FirebaseApp? tempApp; // สร้างตัวแปรแอปจำลอง
+
     try {
-      // 1. สมัครสมาชิกผ่าน Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // 💡 1. สร้าง Instance ย่อยขึ้นมาเพื่อสมัครสมาชิก โดยอ้างอิง Config จากแอปหลัก
+      tempApp = await Firebase.initializeApp(
+        name: 'TemporarySignUpApp',
+        options: Firebase.app().options,
+      );
+
+      // 💡 2. ใช้ tempApp ในการสมัครสมาชิก (แอปหลักจะได้ไม่รับรู้ว่ามีการล็อกอิน)
+      UserCredential userCredential = await FirebaseAuth.instanceFor(app: tempApp)
+          .createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -95,14 +104,12 @@ class _SignUpPageState extends State<SignUpPage> {
       String uid = userCredential.user!.uid;
 
       // --- ส่วนการคัดแยกประเภท (Logic การแบ่ง Role) ---
-      String userRole = 'user'; // ค่าเริ่มต้นคือผู้ใช้ทั่วไป
-      
-      // ตัวอย่างเงื่อนไขพิเศษ: ถ้าใช้อีเมลบริษัท ให้เป็น staff อัตโนมัติ (เลือกใช้หรือไม่ก็ได้)
+      String userRole = 'user'; // ค่าเริ่มต้น
       if (_emailController.text.trim().endsWith('@fleet-admin.com')) {
         userRole = 'staff';
       }
 
-      // 2. บันทึกข้อมูลลง Firestore พร้อมระบุ role
+      // 💡 3. บันทึกข้อมูลลง Firestore (อันนี้ใช้ Instance หลักตามปกติ)
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'first_name': _nameController.text.trim(),
         'last_name': _lastNameController.text.trim(),
@@ -111,22 +118,22 @@ class _SignUpPageState extends State<SignUpPage> {
         'address': _addressController.text.trim(),
         'dob': _selectedDate != null ? Timestamp.fromDate(_selectedDate!) : null,
         'id_card': _idCardController.text.trim(),
-        'role': userRole, // เพิ่ม Field นี้เพื่อคัดแยกประเภท! 
+        'role': userRole, 
         'profile_image': '',
         'wallet_balance': 0,
-        // 💡 เอา 'owner_rating' ออกไปแล้ว
-        'renter_rating': 0, // 💡 ยังคงเก็บ renter_rating ไว้เพราะมีการให้คะแนนผู้เช่า
+        'renter_rating': 0, 
         'created_at': FieldValue.serverTimestamp(),
       });
 
+      // ลบคำสั่ง signOut() เดิมทิ้งไปได้เลย เพราะเราไม่ได้ล็อกอินในแอปหลักแล้ว
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign up successful as $userRole! 🎉')),
+          const SnackBar(content: Text('Sign up successful! Please log in to continue. 🎉')),
         );
-        Navigator.pop(context);
+        Navigator.pop(context); // พากลับไปหน้า Login แบบเนียนๆ
       }
     } on FirebaseAuthException catch (e) {
-      // จัดการ Error แจ้งเตือนผู้ใช้
       String errorMessage = 'An error occurred. Please try again.';
       if (e.code == 'weak-password') {
         errorMessage = 'The password provided is too weak.';
@@ -141,7 +148,18 @@ class _SignUpPageState extends State<SignUpPage> {
           SnackBar(content: Text(errorMessage)),
         );
       }
-   } finally {
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      // 💡 4. ทำลายแอปจำลองทิ้งซะ คืนหน่วยความจำ
+      if (tempApp != null) {
+        await tempApp.delete();
+      }
+      
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -149,7 +167,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;

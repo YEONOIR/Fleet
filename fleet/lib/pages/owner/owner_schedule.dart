@@ -18,6 +18,10 @@ class _OwnerSchedulePageState extends State<OwnerSchedulePage> {
   List<Map<String, dynamic>> _historyBookings = [];
   StreamSubscription<QuerySnapshot>? _subscription;
 
+  // 💡 1. สร้างตัวแปร Caching เพื่อจดจำข้อมูลที่เคยดึงมาแล้ว (ลดการดึงข้อมูลซ้ำ)
+  final Map<String, Map<String, dynamic>> _userCache = {};
+  final Map<String, Map<String, dynamic>> _vehicleCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -31,20 +35,57 @@ class _OwnerSchedulePageState extends State<OwnerSchedulePage> {
   }
 
   // ==========================================
-  // ดึงข้อมูลการจองทั้งหมดของ Owner จาก Firestore แบบ Real-time
+  // ดึงข้อมูลการจองทั้งหมดของ Owner จาก Firestore แบบ Real-time (Optimized)
   // ==========================================
   void _listenToBookings() {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Active = สถานะที่ยังไม่จบ (ยกเว้น pending เพราะ owner_home จัดการแล้ว)
-    // ดึงทุก status ของ Owner คนนี้ แล้วค่อยแยก Active/History ในแอพ
     _subscription = FirebaseFirestore.instance
         .collection('bookings')
         .where('owner_id', isEqualTo: user.uid)
         .orderBy('created_at', descending: true)
         .snapshots()
         .listen((snapshot) async {
+      
+      // 💡 2. รวบรวม ID ของคนเช่าและรถที่ "ยังไม่เคยดึงข้อมูล (ไม่มีใน Cache)"
+      Set<String> missingUsers = {};
+      Set<String> missingVehicles = {};
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String renterId = data['renter_id'] ?? '';
+        final String vehicleId = data['vehicle_id'] ?? '';
+
+        if (renterId.isNotEmpty && !_userCache.containsKey(renterId)) missingUsers.add(renterId);
+        if (vehicleId.isNotEmpty && !_vehicleCache.containsKey(vehicleId)) missingVehicles.add(vehicleId);
+      }
+
+      // 💡 3. ใช้ Future.wait() โหลดข้อมูลที่ขาดหายไป "พร้อมๆ กัน" (ทำงานแบบคู่ขนาน เร็วกว่าเดิมมาก)
+      List<Future<void>> fetchTasks = [];
+      
+      for (String uid in missingUsers) {
+        fetchTasks.add(FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
+          if (doc.exists && doc.data() != null) {
+            _userCache[uid] = doc.data() as Map<String, dynamic>;
+          }
+        }).catchError((_) {}));
+      }
+
+      for (String vid in missingVehicles) {
+        fetchTasks.add(FirebaseFirestore.instance.collection('vehicles').doc(vid).get().then((doc) {
+          if (doc.exists && doc.data() != null) {
+            _vehicleCache[vid] = doc.data() as Map<String, dynamic>;
+          }
+        }).catchError((_) {}));
+      }
+
+      // รอให้การโหลดพร้อมกันทั้งหมดเสร็จสิ้น
+      if (fetchTasks.isNotEmpty) {
+        await Future.wait(fetchTasks);
+      }
+
+      // 💡 4. จัดกลุ่มข้อมูล (ทำงานได้เร็วมากเพราะข้อมูลทั้งหมดอยู่ในหน่วยความจำ Cache แล้ว)
       List<Map<String, dynamic>> active = [];
       List<Map<String, dynamic>> history = [];
 
@@ -52,47 +93,27 @@ class _OwnerSchedulePageState extends State<OwnerSchedulePage> {
         final data = doc.data() as Map<String, dynamic>;
         final String status = (data['status'] ?? 'pending').toString().toLowerCase();
 
-        // ดึงข้อมูลผู้เช่า
         String renterId = data['renter_id'] ?? '';
-        String fName = 'Unknown';
-        String lName = '';
-        String phone = '-';
-        String renterImage = 'assets/icons/avatar.jpg';
-
-        if (renterId.isNotEmpty) {
-          try {
-            var rDoc = await FirebaseFirestore.instance.collection('users').doc(renterId).get();
-            if (rDoc.exists) {
-              final rData = rDoc.data() as Map<String, dynamic>;
-              fName = rData['first_name'] ?? 'Unknown';
-              lName = rData['last_name'] ?? '';
-              phone = rData['phone'] ?? '-';
-              if (rData['profile_image'] != null && rData['profile_image'].toString().startsWith('http')) {
-                renterImage = rData['profile_image'];
-              }
-            }
-          } catch (_) {}
-        }
-
-        // ดึงข้อมูลรถ
         String vehicleId = data['vehicle_id'] ?? '';
-        String vehicleName = 'Unknown Vehicle';
-        String vehicleImage = 'assets/images/car.jpg';
 
-        if (vehicleId.isNotEmpty) {
-          try {
-            var vDoc = await FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get();
-            if (vDoc.exists) {
-              final vData = vDoc.data() as Map<String, dynamic>;
-              vehicleName = vData['vehicle_name'] ?? vData['brand'] ?? 'Unknown';
-              if (vData['images'] != null && (vData['images'] as List).isNotEmpty) {
-                vehicleImage = vData['images'][0];
-              }
-            }
-          } catch (_) {}
+        // ดึงข้อมูลจาก Cache ทันที ไม่ต้องรอ await แล้ว
+        final rData = _userCache[renterId] ?? {};
+        final vData = _vehicleCache[vehicleId] ?? {};
+
+        String fName = rData['first_name'] ?? 'Unknown';
+        String lName = rData['last_name'] ?? '';
+        String phone = rData['phone'] ?? '-';
+        String renterImage = 'assets/icons/avatar.jpg';
+        if (rData['profile_image'] != null && rData['profile_image'].toString().startsWith('http')) {
+          renterImage = rData['profile_image'];
         }
 
-        // จัดรูปแบบวันที่
+        String vehicleName = vData['vehicle_name'] ?? vData['brand'] ?? 'Unknown';
+        String vehicleImage = 'assets/images/car.jpg';
+        if (vData['images'] != null && (vData['images'] as List).isNotEmpty) {
+          vehicleImage = vData['images'][0];
+        }
+
         String formatDate(dynamic ts) {
           if (ts == null) return 'N/A';
           final DateTime d = (ts as Timestamp).toDate();
@@ -105,43 +126,28 @@ class _OwnerSchedulePageState extends State<OwnerSchedulePage> {
           return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
         }
 
-        // สร้าง booking map ที่ครบถ้วนสำหรับส่งไปหน้า Detail
         final Map<String, dynamic> bookingMap = {
-          // ✅ ID สำคัญ — ต้องครบทั้ง 2 ตัว
           'bookingId': doc.id,
           'vehicleId': vehicleId,
           'renterId': renterId,
-
-          // ข้อมูลผู้เช่า
           'renterName': '$fName $lName',
           'tel': phone,
           'rating': '0.0',
           'renterImage': renterImage,
-
-          // ข้อมูลรถ
           'vehicleName': vehicleName,
           'vehicleImage': vehicleImage,
-
-          // วันเวลา
           'startDate': formatDate(data['start_time']),
           'endDate': formatDate(data['end_time']),
           'startTime': formatTime(data['start_time']),
           'endTime': formatTime(data['end_time']),
-
-          // สถานะ
           'status': _capitalizeFirst(status),
           'pendingType': data['pending_type'] ?? 'rent',
           'remark': data['handin_defect'] ?? data['cancel_reason'] ?? '-',
         };
 
-        // แยก Active กับ History
-        // Active: accept, using, pending (ที่เป็น return request)
-        // History: complete, cancel, reject
         if (['complete', 'completed', 'cancel', 'cancelled', 'reject'].contains(status)) {
           history.add(bookingMap);
         } else if (['accept', 'accepted', 'using'].contains(status)) {
-          // pending ธรรมดา (rent request) แสดงใน owner_home แล้ว ไม่ต้องซ้ำ
-          // แต่ pending ที่เป็น return request ให้แสดงใน active ด้วย
           active.add(bookingMap);
         } else if (status == 'pending' && (data['pending_type'] ?? '') == 'return') {
           active.add(bookingMap);

@@ -80,6 +80,18 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
   Future<void> _handleTopUp() async {
     if (_selectedAmount == null || _selectedAmount! <= 0 || _selectedBankIndex == null) return;
 
+    // 💡 NEW: ดักจับเงื่อนไขห้ามเติมเงินเกิน 10,000 บาทต่อครั้ง
+    if (_selectedAmount! > 10000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Maximum top-up amount is ฿10,000 per transaction.', style: TextStyle(fontFamily: 'Poppins')),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return; // หยุดการทำงาน ไม่ให้ทะลุไปบันทึกข้อมูล
+    }
+
     FocusScope.of(context).unfocus(); // ซ่อนคีย์บอร์ด
     setState(() => _isProcessing = true);
 
@@ -103,7 +115,7 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
           'status': 'success',
         });
 
-        // 💡 3. NEW: สร้างการแจ้งเตือน (Notification) ให้กับผู้ใช้
+        // 3. สร้างการแจ้งเตือน (Notification) ให้กับผู้ใช้
         await FirebaseFirestore.instance.collection('notifications').add({
           'user_id': user.uid,
           'target_role': 'Renter', // กำหนดให้ Renter เห็น
@@ -123,7 +135,7 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
             ),
           );
           
-          // 💡 4. NEW: พากลับไปหน้า Renter Home
+          // 4. พากลับไปหน้า Renter Home
           // เนื่องจาก renter_home.dart ใช้คำสั่ง await รออยู่ พอกลับไปมันจะ fetch ข้อมูลใหม่ให้อัตโนมัติ
           Navigator.pop(context, true); 
         }
@@ -249,7 +261,8 @@ class _RenterTopUpPageState extends State<RenterTopUpPage> {
       child: TextField(
         controller: _amountController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true), // ใส่ได้แค่ตัวเลข
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))], // ให้ใส่ทศนิยมได้ 2 ตำแหน่ง
+        // 💡 แก้ไข Regex ตรงนี้: เปลี่ยน \d+ เป็น \d* เพื่อป้องกัน Error ตอนช่องว่างเปล่า
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))], 
         textAlign: TextAlign.center,
         style: const TextStyle(fontFamily: 'Poppins', fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF070E2A)),
         decoration: InputDecoration(
