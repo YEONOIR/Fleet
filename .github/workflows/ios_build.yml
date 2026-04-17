@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # 💡 อัปเดตเป็น v4 แล้ว
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -29,7 +29,7 @@ jobs:
           zip -qq -r app.ipa Payload
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # 💡 อัปเดตเป็น v4 แล้ว
         with:
           name: Fleet-iOS-App
           path: app.ipa
