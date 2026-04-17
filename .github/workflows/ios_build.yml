@@ -17,9 +17,11 @@ jobs:
           channel: 'stable'
 
       - name: Install Dependencies
+        working-directory: ./FleetApp # 💡 เปลี่ยนเป็นชื่อโฟลเดอร์ที่เก็บโปรเจกต์จริงๆ
         run: flutter pub get
 
       - name: Build iOS App (No Code Signing)
+        working-directory: ./FleetApp # 💡 ใส่ตรงนี้ด้วย
         run: flutter build ios --release --no-codesign
 
       - name: Package into .ipa
