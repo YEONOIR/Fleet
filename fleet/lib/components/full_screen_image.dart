@@ -16,18 +16,18 @@ class FullScreenImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // พื้นหลังสีดำให้รูปเด่นขึ้น
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: Center(
-        // 💡 InteractiveViewer ช่วยให้ผู้ใช้ใช้นิ้วซูมเข้า-ออก หรือแพนดูรูปได้
+        // InteractiveViewer for zooming picture
         child: InteractiveViewer(
           panEnabled: true,
           minScale: 0.5,
-          maxScale: 4.0, // ซูมได้สูงสุด 4 เท่า
+          maxScale: 4.0,
           child: _buildImage(),
         ),
       ),

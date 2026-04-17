@@ -1,14 +1,14 @@
-import 'dart:async'; // 💡 เพิ่ม Import เพื่อใช้งาน StreamSubscription
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
-import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../components/history_card.dart'; 
-import 'rent_history.dart'; 
+import '../../components/history_card.dart';
+import 'rent_history.dart';
 
 class RenterYourRentPage extends StatefulWidget {
   final int initialIndex;
-  
+
   const RenterYourRentPage({super.key, this.initialIndex = 0});
 
   @override
@@ -18,7 +18,7 @@ class RenterYourRentPage extends StatefulWidget {
 class _RenterYourRentPageState extends State<RenterYourRentPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true; 
+  bool _isLoading = true;
 
   static const List<String> _tabLabels = [
     'Accept',
@@ -29,47 +29,43 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
   ];
 
   static const List<Color> _tabColors = [
-    Color(0xFF2E7D6E), 
-    Color.fromRGBO(172, 114, 161, 1.0),  
-    Color(0xFF31A1D1), 
-    Color(0xFFC62828), 
-    Color(0xFFE6A817),  
+    Color(0xFF2E7D6E),
+    Color.fromRGBO(172, 114, 161, 1.0),
+    Color(0xFF31A1D1),
+    Color(0xFFC62828),
+    Color(0xFFE6A817),
   ];
 
   static const List<List<Color>> _cardBorderGradients = [
-    [Color(0xFF2E7D6E), Color(0xFF80CBC4)], 
-    [Color.fromRGBO(172, 114, 161, 1.0), Color(0xFFE1BEE7)], 
-    [Color(0xFF31A1D1), Color(0xFFB3E5FC)], 
-    [Color(0xFFC62828), Color(0xFFEF9A9A)], 
-    [Color(0xFFE6A817), Color(0xFFFFF176)], 
+    [Color(0xFF2E7D6E), Color(0xFF80CBC4)],
+    [Color.fromRGBO(172, 114, 161, 1.0), Color(0xFFE1BEE7)],
+    [Color(0xFF31A1D1), Color(0xFFB3E5FC)],
+    [Color(0xFFC62828), Color(0xFFEF9A9A)],
+    [Color(0xFFE6A817), Color(0xFFFFF176)],
   ];
-  
+
   List<Map<String, dynamic>> _rentData = [];
 
   final Map<String, Map<String, dynamic>> _vehicleCache = {};
   final Map<String, Map<String, dynamic>> _userCache = {};
 
-  // 💡 ประกาศตัวแปรสำหรับเก็บ Subscription ของ Real-time listener
   StreamSubscription<QuerySnapshot>? _rentSubscription;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 5, 
+      length: 5,
       vsync: this,
-      initialIndex: widget.initialIndex, 
+      initialIndex: widget.initialIndex,
     );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
 
-    _listenToRentHistoryFromFirebase(); // 💡 เปลี่ยนมาเรียกฟังก์ชันแบบ Real-time
+    _listenToRentHistoryFromFirebase();
   }
 
-  // ==========================================
-  // 💡 ฟังก์ชันดึงประวัติการเช่าแบบ Real-time (Auto Refresh)
-  // ==========================================
   void _listenToRentHistoryFromFirebase() {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -77,161 +73,190 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       return;
     }
 
-    // 💡 เปลี่ยนจาก .get() เป็น .snapshots().listen(...)
     _rentSubscription = FirebaseFirestore.instance
         .collection('bookings')
         .where('renter_id', isEqualTo: user.uid)
         .snapshots()
-        .listen((snap) async {
-          
-      if (snap.docs.isNotEmpty) {
-        Set<String> missingVehicles = {};
-        Set<String> missingOwners = {};
+        .listen(
+          (snap) async {
+            if (snap.docs.isNotEmpty) {
+              Set<String> missingVehicles = {};
+              Set<String> missingOwners = {};
 
-        for (var doc in snap.docs) {
-          var data = doc.data() as Map<String, dynamic>;
-          String vId = data['vehicle_id'] ?? '';
-          String oId = data['owner_id'] ?? '';
+              for (var doc in snap.docs) {
+                var data = doc.data() as Map<String, dynamic>;
+                String vId = data['vehicle_id'] ?? '';
+                String oId = data['owner_id'] ?? '';
 
-          if (vId.isNotEmpty && !_vehicleCache.containsKey(vId)) missingVehicles.add(vId);
-          if (oId.isNotEmpty && !_userCache.containsKey(oId)) missingOwners.add(oId);
-        }
+                if (vId.isNotEmpty && !_vehicleCache.containsKey(vId))
+                  missingVehicles.add(vId);
+                if (oId.isNotEmpty && !_userCache.containsKey(oId))
+                  missingOwners.add(oId);
+              }
 
-        List<Future<void>> fetchTasks = [];
-        
-        for (String vid in missingVehicles) {
-          fetchTasks.add(FirebaseFirestore.instance.collection('vehicles').doc(vid).get().then((doc) {
-            if (doc.exists && doc.data() != null) {
-              _vehicleCache[vid] = doc.data() as Map<String, dynamic>;
+              List<Future<void>> fetchTasks = [];
+
+              for (String vid in missingVehicles) {
+                fetchTasks.add(
+                  FirebaseFirestore.instance
+                      .collection('vehicles')
+                      .doc(vid)
+                      .get()
+                      .then((doc) {
+                        if (doc.exists && doc.data() != null) {
+                          _vehicleCache[vid] =
+                              doc.data() as Map<String, dynamic>;
+                        }
+                      })
+                      .catchError((_) {}),
+                );
+              }
+
+              for (String oid in missingOwners) {
+                fetchTasks.add(
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(oid)
+                      .get()
+                      .then((doc) {
+                        if (doc.exists && doc.data() != null) {
+                          _userCache[oid] = doc.data() as Map<String, dynamic>;
+                        }
+                      })
+                      .catchError((_) {}),
+                );
+              }
+
+              if (fetchTasks.isNotEmpty) {
+                await Future.wait(fetchTasks);
+              }
+
+              List<Map<String, dynamic>> realData = [];
+
+              for (var doc in snap.docs) {
+                var data = doc.data() as Map<String, dynamic>;
+
+                int statusCode = 4;
+                String dbStatus =
+                    data['status']?.toString().toLowerCase() ?? 'pending';
+                if (dbStatus == 'accept' || dbStatus == 'accepted')
+                  statusCode = 0;
+                else if (dbStatus == 'using')
+                  statusCode = 1;
+                else if (dbStatus == 'complete' || dbStatus == 'completed')
+                  statusCode = 2;
+                else if (dbStatus == 'cancel' ||
+                    dbStatus == 'cancelled' ||
+                    dbStatus == 'reject' ||
+                    dbStatus == 'rejected')
+                  statusCode = 3;
+                else
+                  statusCode = 4;
+
+                String vehicleId = data['vehicle_id'] ?? '';
+                final vd = _vehicleCache[vehicleId] ?? {};
+                String vName =
+                    vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
+                String vPlate = vd['license_plate'] ?? '-';
+                String vModel = vd['model'] ?? '-';
+                String vType = vd['vehicle_type'] ?? 'Car';
+                String vAddress = vd['address'] ?? 'No address';
+                String vFuel = vd['fuel'] ?? '-';
+                List<dynamic> vImages = vd['images'] ?? [];
+                String vImage = vImages.isNotEmpty
+                    ? vImages[0]
+                    : 'assets/images/car.jpg';
+
+                String ownerId = data['owner_id'] ?? '';
+                final od = _userCache[ownerId] ?? {};
+                String oName = od['first_name'] ?? 'Owner';
+                String oPhone = od['phone'] ?? '-';
+
+                String formatDate(Timestamp? ts) {
+                  if (ts == null) return 'N/A';
+                  DateTime d = ts.toDate();
+                  return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+                }
+
+                String formatTime(Timestamp? ts) {
+                  if (ts == null) return 'N/A';
+                  DateTime d = ts.toDate();
+                  return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+                }
+
+                realData.add({
+                  'id': doc.id,
+                  'vehicle_id': vehicleId,
+                  'name': vName,
+                  'rating': 0.0,
+                  'plate': vPlate,
+                  'model': vModel,
+                  'type': vType,
+                  'address': vAddress,
+                  'price': data['total_price'] ?? 0,
+                  'image': vImage,
+                  'images': vImages,
+                  'status': statusCode,
+                  'fuel': vFuel,
+                  'deposit': data['deposit_paid'] ?? 0,
+                  'owner': {'name': oName, 'phone': oPhone, 'rating': 0.0},
+                  'booking': {
+                    'startDate': formatDate(data['start_time'] as Timestamp?),
+                    'endDate': formatDate(data['end_time'] as Timestamp?),
+                    'startTime': formatTime(data['start_time'] as Timestamp?),
+                    'endTime': formatTime(data['end_time'] as Timestamp?),
+                    'totalPrice': data['total_price'] ?? 0,
+                  },
+                  'beforeRentImages': data['before_images'] ?? [],
+                  'afterRentImages': data['after_images'] ?? [],
+                  'pendingType': data['pending_type'] ?? 'rent',
+                  'defect': data['handin_defect'] ?? '',
+                  'cancelReason':
+                      data['cancel_reason'] ??
+                      data['reject_reason'] ??
+                      'Cancelled by Owner',
+                  'created_at': data['created_at'],
+                });
+              }
+
+              realData.sort((a, b) {
+                Timestamp? timeA = a['created_at'] as Timestamp?;
+                Timestamp? timeB = b['created_at'] as Timestamp?;
+                if (timeA == null) return 1;
+                if (timeB == null) return -1;
+                return timeB.compareTo(timeA);
+              });
+
+              if (mounted)
+                setState(() {
+                  _rentData = realData;
+                  _isLoading = false;
+                });
+            } else {
+              if (mounted)
+                setState(() {
+                  _rentData = [];
+                  _isLoading = false;
+                });
             }
-          }).catchError((_) {}));
-        }
-
-        for (String oid in missingOwners) {
-          fetchTasks.add(FirebaseFirestore.instance.collection('users').doc(oid).get().then((doc) {
-            if (doc.exists && doc.data() != null) {
-              _userCache[oid] = doc.data() as Map<String, dynamic>;
-            }
-          }).catchError((_) {}));
-        }
-
-        if (fetchTasks.isNotEmpty) {
-          await Future.wait(fetchTasks);
-        }
-
-        List<Map<String, dynamic>> realData = [];
-        
-        for (var doc in snap.docs) {
-          var data = doc.data() as Map<String, dynamic>;
-          
-          int statusCode = 4; 
-          String dbStatus = data['status']?.toString().toLowerCase() ?? 'pending';
-          if (dbStatus == 'accept' || dbStatus == 'accepted') statusCode = 0;
-          else if (dbStatus == 'using') statusCode = 1;
-          else if (dbStatus == 'complete' || dbStatus == 'completed') statusCode = 2;
-          else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'reject' || dbStatus == 'rejected') statusCode = 3;
-          else statusCode = 4; 
-
-          String vehicleId = data['vehicle_id'] ?? '';
-          final vd = _vehicleCache[vehicleId] ?? {};
-          String vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
-          String vPlate = vd['license_plate'] ?? '-';
-          String vModel = vd['model'] ?? '-';
-          String vType = vd['vehicle_type'] ?? 'Car';
-          String vAddress = vd['address'] ?? 'No address';
-          String vFuel = vd['fuel'] ?? '-';
-          List<dynamic> vImages = vd['images'] ?? [];
-          String vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
-
-          String ownerId = data['owner_id'] ?? '';
-          final od = _userCache[ownerId] ?? {};
-          String oName = od['first_name'] ?? 'Owner';
-          String oPhone = od['phone'] ?? '-';
-
-          String formatDate(Timestamp? ts) {
-            if (ts == null) return 'N/A';
-            DateTime d = ts.toDate();
-            return '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
-          }
-          String formatTime(Timestamp? ts) {
-            if (ts == null) return 'N/A';
-            DateTime d = ts.toDate();
-            return '${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
-          }
-
-          realData.add({
-            'id': doc.id,
-            'vehicle_id': vehicleId,
-            'name': vName, 
-            'rating': 0.0, 
-            'plate': vPlate,
-            'model': vModel,
-            'type': vType,
-            'address': vAddress,
-            'price': data['total_price'] ?? 0,
-            'image': vImage, 
-            'images': vImages, 
-            'status': statusCode, 
-            'fuel': vFuel, 
-            'deposit': data['deposit_paid'] ?? 0,
-            'owner': {
-              'name': oName, 
-              'phone': oPhone, 
-              'rating': 0.0
-            },
-            'booking': {
-              'startDate': formatDate(data['start_time'] as Timestamp?),
-              'endDate': formatDate(data['end_time'] as Timestamp?),
-              'startTime': formatTime(data['start_time'] as Timestamp?),
-              'endTime': formatTime(data['end_time'] as Timestamp?),
-              'totalPrice': data['total_price'] ?? 0,
-            },
-            'beforeRentImages': data['before_images'] ?? [],
-            'afterRentImages': data['after_images'] ?? [],
-            'pendingType': data['pending_type'] ?? 'rent',
-            'defect': data['handin_defect'] ?? '',
-            'cancelReason': data['cancel_reason'] ?? data['reject_reason'] ?? 'Cancelled by Owner',
-            'created_at': data['created_at'] 
-          });
-        }
-
-        realData.sort((a, b) {
-           Timestamp? timeA = a['created_at'] as Timestamp?;
-           Timestamp? timeB = b['created_at'] as Timestamp?;
-           if (timeA == null) return 1;
-           if (timeB == null) return -1;
-           return timeB.compareTo(timeA);
-        });
-
-        if (mounted) setState(() {
-          _rentData = realData;
-          _isLoading = false; // 💡 ปิด Loading เมื่อได้ข้อมูลครบแล้ว
-        });
-      } else {
-        if (mounted) setState(() {
-          _rentData = [];
-          _isLoading = false;
-        });
-      }
-    }, onError: (error) {
-      print("Error in real-time listener: $error");
-      if (mounted) setState(() {
-        _rentData = [];
-        _isLoading = false;
-      });
-    });
+          },
+          onError: (error) {
+            print("Error in real-time listener: $error");
+            if (mounted)
+              setState(() {
+                _rentData = [];
+                _isLoading = false;
+              });
+          },
+        );
   }
-  
+
   @override
   void dispose() {
-    _rentSubscription?.cancel(); // 💡 ต้องยกเลิกการฟัง (Listener) เสมอเมื่อปิดหน้านี้เพื่อป้องกัน Memory Leak
+    _rentSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
-
-  // ----------------------------------------------------
-  // ส่วน UI ด้านล่างเหมือนเดิมทั้งหมด ไม่ต้องแก้ไข
-  // ----------------------------------------------------
 
   List<Map<String, dynamic>> _itemsForTab(int tabIndex) {
     return _rentData.where((e) => e['status'] == tabIndex).toList();
@@ -246,8 +271,10 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           _buildHeader(context),
           _buildTabBar(),
           Expanded(
-            child: _isLoading 
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFFAC72A1)))
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFAC72A1)),
+                  )
                 : TabBarView(
                     controller: _tabController,
                     children: List.generate(5, (tabIndex) {
@@ -271,10 +298,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFAC72A1),
-            Color(0xFF070E2A),
-          ],
+          colors: [Color(0xFFAC72A1), Color(0xFF070E2A)],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(24),
@@ -295,7 +319,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
               ),
             ),
           ),
-          const SizedBox(width: 48), 
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -305,9 +329,7 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: TabBar(
         controller: _tabController,
@@ -315,8 +337,16 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
         labelPadding: EdgeInsets.zero,
         indicatorColor: _tabColors[_tabController.index],
         indicatorWeight: 3,
-        labelStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w400),
+        labelStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+        ),
         labelColor: _tabColors[_tabController.index],
         unselectedLabelColor: const Color(0xFF999999),
         tabs: List.generate(5, (i) {
@@ -367,9 +397,8 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => RentHistoryDetailPage(
-                    car: items[index],
-                  ),
+                  builder: (context) =>
+                      RentHistoryDetailPage(car: items[index]),
                 ),
               );
             },

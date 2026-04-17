@@ -5,10 +5,7 @@ import 'package:latlong2/latlong.dart';
 class FleetMap extends StatelessWidget {
   final LatLng currentLocation;
 
-  const FleetMap({
-    super.key,
-    required this.currentLocation,
-  });
+  const FleetMap({super.key, required this.currentLocation});
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +46,13 @@ class FleetMap extends StatelessWidget {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.fleet.app', // เปลี่ยนตาม Package name ของโปรเจกต์
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.fleet.app',
                   ),
                   MarkerLayer(
                     markers: [
-                      // 📍 1. หมุดตำแหน่งผู้ใช้ (ปรับให้เป็นจุดสีน้ำเงินเล็กๆ ขอบขาวแบบมินิมอล)
+                      // 1. User location pin
                       Marker(
                         point: currentLocation,
                         width: 24,
@@ -74,7 +72,7 @@ class FleetMap extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // 🚗 2. หมุดรถยนต์ (ย่อขนาดลง เพิ่มขอบขาวสไตล์ Anywheel)
+                      //  2. Car pin
                       Marker(
                         point: const LatLng(13.7960, 100.3260),
                         width: 32,
@@ -92,10 +90,14 @@ class FleetMap extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.directions_car, color: Colors.white, size: 16),
+                          child: const Icon(
+                            Icons.directions_car,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
-                      // 🛵 3. หมุดมอเตอร์ไซค์
+                      // 3. Motocycle pin
                       Marker(
                         point: const LatLng(13.7920, 100.3210),
                         width: 32,
@@ -113,7 +115,11 @@ class FleetMap extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.two_wheeler, color: Colors.white, size: 16),
+                          child: const Icon(
+                            Icons.two_wheeler,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ],

@@ -38,10 +38,7 @@ class SearchHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFAC72A1),
-            Color(0xFF070E2A),
-          ],
+          colors: [Color(0xFFAC72A1), Color(0xFF070E2A)],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(24),
@@ -52,9 +49,7 @@ class SearchHeader extends StatelessWidget {
         children: [
           // Search icon / expanded search bar
           if (isSearchExpanded)
-            Expanded(
-              child: _buildExpandedSearch(),
-            )
+            Expanded(child: _buildExpandedSearch())
           else
             _buildCollapsedSearch(),
 
@@ -98,11 +93,7 @@ class SearchHeader extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(21),
         ),
-        child: const Icon(
-          Icons.search,
-          color: Colors.white,
-          size: 22,
-        ),
+        child: const Icon(Icons.search, color: Colors.white, size: 22),
       ),
     );
   }
@@ -138,17 +129,13 @@ class SearchHeader extends StatelessWidget {
                 searchFocusNode.unfocus();
               }
             },
-            child: const Icon(
-              Icons.search,
-              color: Color(0xFFAC72A1),
-              size: 22,
-            ),
+            child: const Icon(Icons.search, color: Color(0xFFAC72A1), size: 22),
           ),
           suffixIcon: searchController.text.isNotEmpty
               ? GestureDetector(
                   onTap: () {
                     searchController.clear();
-                    onSearchChanged(); // update UI after clear
+                    onSearchChanged();
                   },
                   child: const Icon(
                     Icons.clear,
@@ -158,8 +145,10 @@ class SearchHeader extends StatelessWidget {
                 )
               : null,
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 11,
+          ),
         ),
       ),
     );

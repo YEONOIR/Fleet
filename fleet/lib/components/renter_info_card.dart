@@ -30,7 +30,7 @@ class RenterInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white, // 💡 1. เปลี่ยนพื้นหลังเป็นสีขาวตรงนี้
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color.fromRGBO(172, 114, 161, 0.2)),
       ),
@@ -69,13 +69,16 @@ class RenterInfoCard extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => FleetEntityReviewPage( // 💡 เอา const ออก
-                      isCar: false, 
-                      entityName: 'User Reviews',
-                      targetId: renterId, // 💡 ส่งค่า targetId ไป
-                    )
-                  ));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FleetEntityReviewPage(
+                        isCar: false,
+                        entityName: 'User Reviews',
+                        targetId: renterId,
+                      ),
+                    ),
+                  );
                 },
                 child: Row(
                   children: [
@@ -83,11 +86,20 @@ class RenterInfoCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       rating.toString(),
-                      style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    // 💡 2. เปลี่ยนสี Check Reviews เป็นสีม่วงตรงนี้
-                    const Text('Check Reviews >', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Color.fromRGBO(172, 114, 161, 1.0))),
+                    const Text(
+                      'Check Reviews >',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 11,
+                        color: Color.fromRGBO(172, 114, 161, 1.0),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -102,15 +114,43 @@ class RenterInfoCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(startDate, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500)),
-                  Text(endDate, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500)),
+                  Text(
+                    startDate,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    endDate,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(startTime, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500)),
-                  Text(endTime, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500)),
+                  Text(
+                    startTime,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    endTime,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ],

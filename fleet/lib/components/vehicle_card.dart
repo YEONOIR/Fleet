@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../utils/vehicle_utils.dart'; 
+import '../../utils/vehicle_utils.dart';
 
 class VehicleCard extends StatelessWidget {
   final String vName;
-  final double vRate; 
-  final String imagePath; // 💡 รองรับทั้ง asset และ http url
+  final double vRate;
+  final String imagePath;
   final String vPlate;
   final String vBrand;
   final String vModel;
   final String vType;
   final String vFuel;
   final String vAddress;
-  final double vPrice; 
-  final double vDeposit; 
+  final double vPrice;
+  final double vDeposit;
   final String vStatus;
   final Color statusColor;
 
@@ -47,7 +47,7 @@ class VehicleCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // ส่วนหัว
+          // ─────────── Header ───────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
             decoration: const BoxDecoration(
@@ -88,7 +88,7 @@ class VehicleCard extends StatelessWidget {
             ),
           ),
 
-          // ส่วนเนื้อหา
+          // ─────────── Info ───────────
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -96,16 +96,22 @@ class VehicleCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  // 💡 เช็คว่าเป็น URL หรือ Path ในเครื่อง แล้วแสดงรูปให้ถูกวิธี
-                  child: imagePath.startsWith('http') 
+                  child: imagePath.startsWith('http')
                       ? Image.network(
                           imagePath,
                           width: 90,
                           height: 90,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 90, height: 90, color: Colors.grey[300], child: const Icon(Icons.broken_image, color: Colors.grey)
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                width: 90,
+                                height: 90,
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                ),
+                              ),
                         )
                       : Image.asset(
                           imagePath,
@@ -130,7 +136,7 @@ class VehicleCard extends StatelessWidget {
                             ),
                           ),
                           Icon(
-                            getFuelIcon(vFuel), 
+                            getFuelIcon(vFuel),
                             size: 30,
                             color: const Color.fromRGBO(7, 14, 42, 1.0),
                           ),

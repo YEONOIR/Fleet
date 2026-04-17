@@ -20,7 +20,6 @@ class RentPaymentPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. รวมวันที่และเวลาเพื่อคำนวณ
     final startDateTime = DateTime(
       startDate.year,
       startDate.month,
@@ -36,7 +35,6 @@ class RentPaymentPage extends StatelessWidget {
       endTime.minute,
     );
 
-    // 2. คำนวณจำนวนชั่วโมง
     final duration = endDateTime.difference(startDateTime);
     int totalHours = duration.inHours;
     if (duration.inMinutes % 60 > 0) {
@@ -44,7 +42,6 @@ class RentPaymentPage extends StatelessWidget {
     }
     if (totalHours <= 0) totalHours = 1;
 
-    // 3. ดึงราคาและคำนวณยอดเงิน
     final double pricePerHour =
         double.tryParse(
           vehicleData['V Price']?.toString() ??
@@ -409,7 +406,6 @@ class RentPaymentPage extends StatelessWidget {
                                                 .instance
                                                 .currentUser;
                                             if (user != null) {
-                                              // 💡 1. ตรวจสอบยอดเงินคงเหลือของผู้ใช้ (Wallet Balance)
                                               DocumentSnapshot userDoc =
                                                   await FirebaseFirestore
                                                       .instance
@@ -421,7 +417,6 @@ class RentPaymentPage extends StatelessWidget {
                                                           0)
                                                       .toDouble();
 
-                                              // 💡 2. ดักจับ Error ถ้าเงินไม่พอ
                                               if (currentBalance < finalTotal) {
                                                 setModalState(
                                                   () => isProcessing = false,
@@ -442,10 +437,9 @@ class RentPaymentPage extends StatelessWidget {
                                                     ),
                                                   );
                                                 }
-                                                return; // หยุดทำงานทันที
+                                                return;
                                               }
 
-                                              // หักเงินออกจากระบบ
                                               await FirebaseFirestore.instance
                                                   .collection('users')
                                                   .doc(user.uid)
@@ -474,7 +468,6 @@ class RentPaymentPage extends StatelessWidget {
                                                       vDoc['owner_id'] ?? '';
                                               }
 
-                                              // 💡 3. เขียนข้อมูลลงใน collection "bookings" ตามฟิลด์ที่คุณออกแบบเป๊ะๆ
                                               await FirebaseFirestore.instance
                                                   .collection('bookings')
                                                   .add({
@@ -514,7 +507,6 @@ class RentPaymentPage extends StatelessWidget {
                                                         FieldValue.serverTimestamp(),
                                                   });
 
-                                              // สร้างประวัติการจ่ายเงินลง transactions
                                               await FirebaseFirestore.instance
                                                   .collection('transactions')
                                                   .add({
@@ -528,7 +520,6 @@ class RentPaymentPage extends StatelessWidget {
                                                         'Booking ${vehicleData['V Name'] ?? 'Vehicle'}',
                                                   });
 
-                                              // แจ้งเตือนไปยัง Owner
                                               if (ownerId.isNotEmpty) {
                                                 await FirebaseFirestore.instance
                                                     .collection('notifications')
@@ -551,16 +542,15 @@ class RentPaymentPage extends StatelessWidget {
                                                   dialogContext,
                                                 ).pop();
 
-                                               // 💡 เปลี่ยนจาก initialIndex: 4 มาเป็นการแยก 2 ตัวแบบนี้ครับ
-Navigator.pushNamedAndRemoveUntil(
-  context, 
-  '/renter', 
-  arguments: {
-    'mainIndex': 1, // 1 คือเพื่อเปิดเมนูด้านล่าง "Your Rent"
-    'tabIndex': 4,  // 4 คือเพื่อเปิดแท็บด้านบน "Pending"
-  }, 
-  (route) => false
-);
+                                                Navigator.pushNamedAndRemoveUntil(
+                                                  context,
+                                                  '/renter',
+                                                  arguments: {
+                                                    'mainIndex': 1,
+                                                    'tabIndex': 4,
+                                                  },
+                                                  (route) => false,
+                                                );
                                               }
                                             }
                                           } catch (e) {

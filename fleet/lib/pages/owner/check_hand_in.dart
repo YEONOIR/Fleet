@@ -1,10 +1,10 @@
 import 'dart:io';
-import 'dart:convert'; // 💡 สำหรับ json.decode
-import 'package:http/http.dart' as http; // 💡 สำหรับติดต่อ ImgBB API
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../rating.dart';
-import '../../components/full_screen_image.dart'; // 💡 เพิ่มการนำเข้า Component ดูรูปเต็มจอตรงนี้
+import '../../components/full_screen_image.dart';
 
 class CheckHandInPage extends StatefulWidget {
   final String vehicleName;
@@ -26,13 +26,11 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
   bool hasDefect = false;
   TextEditingController defectController = TextEditingController();
 
-  // 💡 เก็บ URL รูปก่อนเช่าที่ดึงมาจาก Firestore
   List<String> beforeImages = [];
   bool isLoadingBeforeImages = true;
   String? _fetchError;
 
-  // 💡 ใส่ API Key ของ ImgBB
-  final String imgBBKey = '0a99d5ebe05123a47328ece31b15711c'; 
+  final String imgBBKey = '0a99d5ebe05123a47328ece31b15711c';
 
   @override
   void initState() {
@@ -46,23 +44,22 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
     super.dispose();
   }
 
-  // ==========================================
-  // 💡 ฟังก์ชันอัปโหลดรูปภาพไป ImgBB (สำหรับ After Rent)
-  // ==========================================
   Future<String?> _uploadImageToImgBB(File imageFile) async {
     try {
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.imgbb.com/1/upload?key=$imgBBKey'),
       );
-      
-      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
-      
+
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
       final response = await request.send();
       if (response.statusCode == 200) {
         final responseData = await response.stream.bytesToString();
         final jsonResponse = json.decode(responseData);
-        return jsonResponse['data']['url']; 
+        return jsonResponse['data']['url'];
       }
       return null;
     } catch (e) {
@@ -71,9 +68,6 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
     }
   }
 
-  // ==========================================
-  // 💡 ดึง URL รูปก่อนเช่าจาก Firestore
-  // ==========================================
   Future<void> _fetchBeforeImages() async {
     final String bId = widget.bookingId.trim();
     if (bId.isEmpty) {
@@ -110,11 +104,14 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
 
       List<dynamic> rawImages = [];
 
-      if (data['before_images'] != null && (data['before_images'] as List).isNotEmpty) {
+      if (data['before_images'] != null &&
+          (data['before_images'] as List).isNotEmpty) {
         rawImages = data['before_images'] as List;
-      } else if (data['beforeImages'] != null && (data['beforeImages'] as List).isNotEmpty) {
+      } else if (data['beforeImages'] != null &&
+          (data['beforeImages'] as List).isNotEmpty) {
         rawImages = data['beforeImages'] as List;
-      } else if (data['photos_before'] != null && (data['photos_before'] as List).isNotEmpty) {
+      } else if (data['photos_before'] != null &&
+          (data['photos_before'] as List).isNotEmpty) {
         rawImages = data['photos_before'] as List;
       }
 
@@ -128,7 +125,8 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           beforeImages = validUrls;
           isLoadingBeforeImages = false;
           if (rawImages.isNotEmpty && validUrls.isEmpty) {
-            _fetchError = 'Images found but URLs are invalid.\nRaw: ${rawImages.first}';
+            _fetchError =
+                'Images found but URLs are invalid.\nRaw: ${rawImages.first}';
           }
         });
       }
@@ -153,9 +151,18 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)),
+              CircularProgressIndicator(
+                color: Color.fromRGBO(172, 114, 161, 1.0),
+              ),
               SizedBox(height: 8),
-              Text('Loading before rent images...', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.grey)),
+              Text(
+                'Loading before rent images...',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
             ],
           ),
         ),
@@ -170,9 +177,21 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 32),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+              size: 32,
+            ),
             const SizedBox(height: 8),
-            Text(_fetchError!, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.orange)),
+            Text(
+              _fetchError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12,
+                color: Colors.orange,
+              ),
+            ),
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () {
@@ -184,7 +203,10 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                 _fetchBeforeImages();
               },
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Retry', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+              label: const Text(
+                'Retry',
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
             ),
           ],
         ),
@@ -200,9 +222,16 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.image_not_supported_outlined, size: 32, color: Colors.grey),
+              Icon(
+                Icons.image_not_supported_outlined,
+                size: 32,
+                color: Colors.grey,
+              ),
               SizedBox(height: 8),
-              Text('No before rent images found.', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+              Text(
+                'No before rent images found.',
+                style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -217,12 +246,14 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: beforeImages.map((imgUrl) {
-            // 💡 เพิ่ม GestureDetector ครอบภาพ Before Rent
             return GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImage(
-                  imageUrl: imgUrl,
-                )));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FullScreenImage(imageUrl: imgUrl),
+                  ),
+                );
               },
               child: Padding(
                 padding: const EdgeInsets.only(right: 15),
@@ -240,7 +271,10 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                         height: 100,
                         color: Colors.grey.shade300,
                         child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color.fromRGBO(172, 114, 161, 1.0)),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color.fromRGBO(172, 114, 161, 1.0),
+                          ),
                         ),
                       );
                     },
@@ -252,9 +286,20 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                         child: const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.broken_image, color: Colors.grey, size: 28),
+                            Icon(
+                              Icons.broken_image,
+                              color: Colors.grey,
+                              size: 28,
+                            ),
                             SizedBox(height: 4),
-                            Text('Load failed', style: TextStyle(fontSize: 9, color: Colors.grey, fontFamily: 'Poppins')),
+                            Text(
+                              'Load failed',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.grey,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -276,7 +321,10 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
         height: 130,
         color: Colors.grey[200],
         child: const Center(
-          child: Text('No after rent images.', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+          child: Text(
+            'No after rent images.',
+            style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
+          ),
         ),
       );
     }
@@ -289,18 +337,25 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: widget.afterImages.map((imageFile) {
-            // 💡 เพิ่ม GestureDetector ครอบภาพ After Rent
             return GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImage(
-                  imageFile: imageFile,
-                )));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FullScreenImage(imageFile: imageFile),
+                  ),
+                );
               },
               child: Padding(
                 padding: const EdgeInsets.only(right: 15),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.file(imageFile, width: 100, height: 100, fit: BoxFit.cover),
+                  child: Image.file(
+                    imageFile,
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             );
@@ -318,13 +373,20 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color.fromRGBO(172, 114, 161, 1.0), Color.fromRGBO(7, 14, 42, 1.0)],
+              colors: [
+                Color.fromRGBO(172, 114, 161, 1.0),
+                Color.fromRGBO(7, 14, 42, 1.0),
+              ],
             ),
           ),
         ),
         title: const Text(
           'Check hand in',
-          style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -338,13 +400,27 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                 children: [
                   const Padding(
                     padding: EdgeInsets.all(20.0),
-                    child: Text('Before rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Before rent',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   _buildBeforeRentImages(),
 
                   const Padding(
                     padding: EdgeInsets.all(20.0),
-                    child: Text('After rent', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'After rent',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   _buildAfterRentImages(),
 
@@ -353,14 +429,35 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Inspection', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Inspection',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         CheckboxListTile(
-                          title: const Text('Report Defect / Damage', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
-                          subtitle: const Text('Check this if the vehicle has new damages.', style: TextStyle(fontFamily: 'Poppins', fontSize: 11)),
+                          title: const Text(
+                            'Report Defect / Damage',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Check this if the vehicle has new damages.',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 11,
+                            ),
+                          ),
                           value: hasDefect,
                           activeColor: Colors.redAccent,
-                          onChanged: (bool? value) => setState(() => hasDefect = value ?? false),
+                          onChanged: (bool? value) =>
+                              setState(() => hasDefect = value ?? false),
                           controlAffinity: ListTileControlAffinity.leading,
                           contentPadding: EdgeInsets.zero,
                         ),
@@ -369,12 +466,27 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
                           TextField(
                             controller: defectController,
                             maxLines: 4,
-                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 13,
+                            ),
                             decoration: InputDecoration(
-                              hintText: 'Describe the defect (e.g., Scratch on front bumper)...',
-                              hintStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.grey),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.redAccent), borderRadius: BorderRadius.circular(10)),
+                              hintText:
+                                  'Describe the defect (e.g., Scratch on front bumper)...',
+                              hintStyle: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(
+                                  color: Colors.redAccent,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                           ),
                         ],
@@ -393,10 +505,20 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF75DB73),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: _handleConfirm,
-                child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: const Text(
+                  'Confirm',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ),
@@ -407,21 +529,38 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
 
   Future<void> _handleConfirm() async {
     if (hasDefect && defectController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please provide details of the defects.', style: TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: Colors.redAccent,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please provide details of the defects.',
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
       return;
     }
 
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))));
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          color: Color.fromRGBO(172, 114, 161, 1.0),
+        ),
+      ),
+    );
 
     try {
-      var bDoc = await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).get();
+      var bDoc = await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(widget.bookingId)
+          .get();
       if (!mounted) return;
-      Navigator.pop(context); // ปิด Loading
+      Navigator.pop(context);
 
-      if (!bDoc.exists || bDoc.data() == null) throw Exception("Booking not found");
+      if (!bDoc.exists || bDoc.data() == null)
+        throw Exception("Booking not found");
 
       var bData = bDoc.data() as Map<String, dynamic>;
       double maxDeposit = (bData['deposit_paid'] ?? 0).toDouble();
@@ -433,7 +572,9 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -444,21 +585,39 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Deduct Deposit', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.redAccent)),
+        title: const Text(
+          'Deduct Deposit',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            color: Colors.redAccent,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Enter the amount to deduct from the renter's deposit.\n(Maximum: ฿$maxDeposit)", style: const TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+            Text(
+              "Enter the amount to deduct from the renter's deposit.\n(Maximum: ฿$maxDeposit)",
+              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12),
+            ),
             const SizedBox(height: 15),
             TextField(
               controller: deductController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
               decoration: InputDecoration(
                 suffixText: '฿',
                 hintText: '0.00',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -466,36 +625,58 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
-              double deductAmount = double.tryParse(deductController.text.trim()) ?? 0.0;
-              
+              double deductAmount =
+                  double.tryParse(deductController.text.trim()) ?? 0.0;
+
               if (deductAmount > maxDeposit) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Cannot deduct more than the deposit limit (฿$maxDeposit)', style: const TextStyle(fontFamily: 'Poppins')),
-                  backgroundColor: Colors.redAccent,
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Cannot deduct more than the deposit limit (฿$maxDeposit)',
+                      style: const TextStyle(fontFamily: 'Poppins'),
+                    ),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
                 return;
               }
 
               Navigator.pop(context);
               _finishHandIn(deductAmount, bData);
             },
-            child: const Text('Confirm', style: TextStyle(fontFamily: 'Poppins', color: Colors.white)),
+            child: const Text(
+              'Confirm',
+              style: TextStyle(fontFamily: 'Poppins', color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _finishHandIn(double deductAmount, Map<String, dynamic> bData) async {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))));
+  Future<void> _finishHandIn(
+    double deductAmount,
+    Map<String, dynamic> bData,
+  ) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          color: Color.fromRGBO(172, 114, 161, 1.0),
+        ),
+      ),
+    );
 
     try {
-      // 💡 1. อัปโหลดรูปภาพ After Images ไปยัง ImgBB
       List<String> afterImageUrls = [];
       for (int i = 0; i < widget.afterImages.length; i++) {
         String? url = await _uploadImageToImgBB(widget.afterImages[i]);
@@ -517,29 +698,32 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
 
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
-      // 1. Update Booking Status & After Images 💡
-      var bRef = FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId);
+      var bRef = FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(widget.bookingId);
       batch.update(bRef, {
         'status': 'complete',
         'handin_defect': hasDefect ? defectController.text.trim() : '',
         'deducted_deposit': deductAmount,
         'refunded_deposit': renterRefund,
-        'after_images': afterImageUrls, // 💡 บันทึก URL รูปภาพตอนคืนรถ
+        'after_images': afterImageUrls,
         'completed_at': FieldValue.serverTimestamp(),
       });
 
-      // 2. Update Vehicle Status
       if (vId.isNotEmpty) {
         var vRef = FirebaseFirestore.instance.collection('vehicles').doc(vId);
         batch.update(vRef, {'status': 'available'});
       }
 
-      // 3. Update Renter Wallet & Create Transaction
       if (rId.isNotEmpty) {
         var rRef = FirebaseFirestore.instance.collection('users').doc(rId);
-        batch.update(rRef, {'wallet_balance': FieldValue.increment(renterRefund)});
-        
-        var rTxRef = FirebaseFirestore.instance.collection('transactions').doc();
+        batch.update(rRef, {
+          'wallet_balance': FieldValue.increment(renterRefund),
+        });
+
+        var rTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc();
         batch.set(rTxRef, {
           'user_id': rId,
           'type': 'refund',
@@ -549,29 +733,34 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           'description': 'Deposit refund (Deducted: ฿$deductAmount)',
         });
 
-        // แจ้งเตือนผู้เช่า
-        var notifRenterRef = FirebaseFirestore.instance.collection('notifications').doc();
+        var notifRenterRef = FirebaseFirestore.instance
+            .collection('notifications')
+            .doc();
         batch.set(notifRenterRef, {
           'user_id': rId,
           'target_role': 'Renter',
           'type': 'return success',
           'title': 'Vehicle Returned Successfully',
-          'message': 'Your rental is complete. You received a deposit refund of ฿$renterRefund. Tap here to rate the vehicle.',
+          'message':
+              'Your rental is complete. You received a deposit refund of ฿$renterRefund. Tap here to rate the vehicle.',
           'is_read': false,
           'created_at': FieldValue.serverTimestamp(),
-          'action_type': 'rate_vehicle', 
+          'action_type': 'rate_vehicle',
           'booking_id': widget.bookingId,
           'vehicle_id': vId,
-          'vehicle_name': widget.vehicleName, 
+          'vehicle_name': widget.vehicleName,
         });
       }
 
-      // 4. Update Owner Wallet & Create Transaction
       if (oId.isNotEmpty) {
         var oRef = FirebaseFirestore.instance.collection('users').doc(oId);
-        batch.update(oRef, {'wallet_balance': FieldValue.increment(ownerEarning)});
-        
-        var oTxRef = FirebaseFirestore.instance.collection('transactions').doc();
+        batch.update(oRef, {
+          'wallet_balance': FieldValue.increment(ownerEarning),
+        });
+
+        var oTxRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc();
         batch.set(oTxRef, {
           'user_id': oId,
           'type': 'income',
@@ -581,14 +770,16 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           'description': 'Rental income + Deducted deposit',
         });
 
-        // แจ้งเตือนผู้ให้เช่า
-        var notifOwnerRef = FirebaseFirestore.instance.collection('notifications').doc();
+        var notifOwnerRef = FirebaseFirestore.instance
+            .collection('notifications')
+            .doc();
         batch.set(notifOwnerRef, {
           'user_id': oId,
           'target_role': 'Owner',
           'type': 'return success',
           'title': 'Return Confirmed',
-          'message': 'Vehicle return completed. Earning of ฿$ownerEarning has been added to your wallet.',
+          'message':
+              'Vehicle return completed. Earning of ฿$ownerEarning has been added to your wallet.',
           'is_read': false,
           'created_at': FieldValue.serverTimestamp(),
         });
@@ -597,24 +788,25 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
       await batch.commit();
 
       if (!mounted) return;
-      Navigator.pop(context); // ปิด Loading
+      Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vehicle returned successfully!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Vehicle returned successfully!'),
+          backgroundColor: Colors.green,
+        ),
       );
 
-     Future.delayed(const Duration(seconds: 1), () {
-        // 💡 1. เคลียร์ Stack หน้าจอทั้งหมดทิ้ง แล้วพากลับไปตั้งต้นที่ Owner Main (แท็บ Home)
+      Future.delayed(const Duration(seconds: 1), () {
         Navigator.pushNamedAndRemoveUntil(
-          context, 
-          '/owner', 
+          context,
+          '/owner',
           (route) => false,
-          arguments: {'initialIndex': 0}, // เปิดหน้า Home (Index 0)
+          arguments: {'initialIndex': 0},
         );
 
-        // 💡 2. จากนั้นดันหน้า Rating ขึ้นมาทับ (พอรีวิวเสร็จ กดปิดปุ๊บ จะกลับมาเจอ Home ทันที)
         Navigator.push(
-          context, 
+          context,
           MaterialPageRoute(
             builder: (context) => RatingPage(
               isRatingRenter: true,
@@ -626,10 +818,11 @@ class _CheckHandInPageState extends State<CheckHandInPage> {
           ),
         );
       });
-
     } catch (e) {
       if (mounted) Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 }

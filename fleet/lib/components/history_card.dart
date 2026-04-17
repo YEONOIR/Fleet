@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Import Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HistoryCard extends StatelessWidget {
   final Map<String, dynamic> car;
@@ -15,12 +15,12 @@ class HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 เช็ค Path ว่าเป็น URL หรือ Assets
+    //  Path Checking: URL or Assets
     String imgPath = car['image']?.toString() ?? 'assets/images/car.jpg';
-    
-    // 💡 ดึงข้อมูล booking ออกมาเพื่อใช้วันที่
-    Map<String, dynamic>? booking = car['booking']; 
-    String vehicleId = car['vehicle_id'] ?? car['id'] ?? ''; // 💡 ดึง ID รถ
+
+    // pull booking date data
+    Map<String, dynamic>? booking = car['booking'];
+    String vehicleId = car['vehicle_id'] ?? car['id'] ?? '';
 
     return GestureDetector(
       onTap: onTap,
@@ -41,10 +41,7 @@ class HistoryCard extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(
-                  color: gradientColors[0],
-                  width: 4,
-                ),
+                left: BorderSide(color: gradientColors[0], width: 4),
               ),
             ),
             child: Column(
@@ -68,7 +65,10 @@ class HistoryCard extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFC107),
                           borderRadius: BorderRadius.circular(12),
@@ -76,15 +76,29 @@ class HistoryCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star, size: 14, color: Colors.white),
+                            const Icon(
+                              Icons.star,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                             const SizedBox(width: 3),
-                            // 💡 ใช้ FutureBuilder ดึง Rating สดๆ จาก Database ป้องกัน Error Null
+                            // Use FutureBuilder to pull Rating from Database
                             FutureBuilder<DocumentSnapshot>(
-                              future: vehicleId.isNotEmpty ? FirebaseFirestore.instance.collection('vehicles').doc(vehicleId).get() : null,
+                              future: vehicleId.isNotEmpty
+                                  ? FirebaseFirestore.instance
+                                        .collection('vehicles')
+                                        .doc(vehicleId)
+                                        .get()
+                                  : null,
                               builder: (context, snapshot) {
-                                double rating = double.tryParse(car['rating']?.toString() ?? '0') ?? 0.0;
+                                double rating =
+                                    double.tryParse(
+                                      car['rating']?.toString() ?? '0',
+                                    ) ??
+                                    0.0;
                                 if (snapshot.hasData && snapshot.data!.exists) {
-                                  rating = (snapshot.data!['rating'] ?? 0).toDouble();
+                                  rating = (snapshot.data!['rating'] ?? 0)
+                                      .toDouble();
                                 }
                                 return Text(
                                   rating.toStringAsFixed(1),
@@ -95,7 +109,7 @@ class HistoryCard extends StatelessWidget {
                                     color: Colors.white,
                                   ),
                                 );
-                              }
+                              },
                             ),
                           ],
                         ),
@@ -117,14 +131,38 @@ class HistoryCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(0, 2))
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: imgPath.startsWith('http')
-                              ? Image.network(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image, color: Colors.grey)))
-                              : Image.asset(imgPath, fit: BoxFit.cover, errorBuilder: (ctx, err, stack) => Container(color: Colors.grey.shade200, child: const Icon(Icons.directions_car, color: Colors.grey))),
+                              ? Image.network(
+                                  imgPath,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                )
+                              : Image.asset(
+                                  imgPath,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Icon(
+                                      Icons.directions_car,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -134,31 +172,45 @@ class HistoryCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _detailRow(Icons.credit_card, 'License plate: ${car['plate'] ?? '-'}'),
+                            _detailRow(
+                              Icons.credit_card,
+                              'License plate: ${car['plate'] ?? '-'}',
+                            ),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.directions_car_outlined, 'Model: ${car['model'] ?? '-'}'),
+                            _detailRow(
+                              Icons.directions_car_outlined,
+                              'Model: ${car['model'] ?? '-'}',
+                            ),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.category_outlined, 'Type: ${car['type'] ?? '-'}'),
+                            _detailRow(
+                              Icons.category_outlined,
+                              'Type: ${car['type'] ?? '-'}',
+                            ),
                             const SizedBox(height: 3),
-                            _detailRow(Icons.location_on_outlined, car['address']?.toString() ?? '-'),
+                            _detailRow(
+                              Icons.location_on_outlined,
+                              car['address']?.toString() ?? '-',
+                            ),
                             const SizedBox(height: 6),
-                            
+
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 Icon(
-                                  Icons.calendar_month_outlined, 
-                                  size: 14, 
-                                  color: const Color(0xFF070E2A).withOpacity(0.6)
+                                  Icons.calendar_month_outlined,
+                                  size: 14,
+                                  color: const Color(
+                                    0xFF070E2A,
+                                  ).withOpacity(0.6),
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
                                   '${booking?['startDate'] ?? '-'} - ${booking?['endDate'] ?? '-'}',
                                   style: const TextStyle(
-                                    fontFamily: 'Poppins', 
-                                    fontSize: 12, 
-                                    fontWeight: FontWeight.bold, 
-                                    color: Color.fromRGBO(7, 14, 42, 0.8)
+                                    fontFamily: 'Poppins',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromRGBO(7, 14, 42, 0.8),
                                   ),
                                 ),
                               ],

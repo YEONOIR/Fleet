@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'vehicle_mini_card.dart'; 
-import '../pages/take_photo.dart'; 
+import 'vehicle_mini_card.dart';
+import '../pages/take_photo.dart';
 import '../pages/owner/schedule_detail.dart';
 
 class RequestCard extends StatelessWidget {
@@ -15,8 +15,8 @@ class RequestCard extends StatelessWidget {
     final endDateParts = request['Rent Handin'].toString().split(' ');
 
     String rImage = request['renterImage'] ?? 'assets/icons/avatar.jpg';
-    ImageProvider avatarImage = rImage.startsWith('http') 
-        ? NetworkImage(rImage) 
+    ImageProvider avatarImage = rImage.startsWith('http')
+        ? NetworkImage(rImage)
         : AssetImage(rImage) as ImageProvider;
 
     return Container(
@@ -28,19 +28,20 @@ class RequestCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // ----------------------------------------
-          // 1. Header (ชื่อผู้เช่า + เรตติ้ง)
-          // ----------------------------------------
+          // ─────────── Header ───────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
             decoration: const BoxDecoration(
               color: Color.fromRGBO(42, 35, 66, 1.0),
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(19), topRight: Radius.circular(19)),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(19),
+                topRight: Radius.circular(19),
+              ),
             ),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 20, 
+                  radius: 20,
                   backgroundImage: avatarImage,
                   backgroundColor: Colors.grey.shade300,
                 ),
@@ -49,8 +50,25 @@ class RequestCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${request['Acc FName']} ${request['Acc LName']}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text('Tel: ${request['Acc Phone']}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.white70)),
+                      Text(
+                        '${request['Acc FName']} ${request['Acc LName']}',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Tel: ${request['Acc Phone']}',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -58,16 +76,22 @@ class RequestCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.star, color: Colors.yellow, size: 18),
                     const SizedBox(width: 4),
-                    Text(request['Acc Rate'].toStringAsFixed(1), style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text(
+                      request['Acc Rate'].toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
-          
-          // ----------------------------------------
-          // 2. เนื้อหา (เวลา + ข้อมูลรถ + ปุ่มกด)
-          // ----------------------------------------
+
+          // ─────────── Info ───────────
           Padding(
             padding: const EdgeInsets.all(15),
             child: Column(
@@ -76,7 +100,14 @@ class RequestCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(isRent ? 'Request to rent' : 'Request to hand in', style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text(
+                      isRent ? 'Request to rent' : 'Request to hand in',
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     _buildStatusBadge(isRent ? 'Rent' : 'Hand in', isRent),
                   ],
                 ),
@@ -87,14 +118,26 @@ class RequestCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('${startDateParts[0]}    ${startDateParts.length > 1 ? startDateParts[1] : ''}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
-                        Text('${endDateParts[0]}    ${endDateParts.length > 1 ? endDateParts[1] : ''}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 11)),
+                        Text(
+                          '${startDateParts[0]}    ${startDateParts.length > 1 ? startDateParts[1] : ''}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11,
+                          ),
+                        ),
+                        Text(
+                          '${endDateParts[0]}    ${endDateParts.length > 1 ? endDateParts[1] : ''}',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 15),
-                
+
                 VehicleMiniCard(
                   vName: request['vehicleData']['V Name'],
                   vRate: request['vehicleData']['V_Rate'],
@@ -108,28 +151,35 @@ class RequestCard extends StatelessWidget {
                   vPrice: request['vehicleData']['V Price'],
                 ),
                 const SizedBox(height: 15),
-                
-                // ปุ่ม Action
+
+                // ─────────── Action Button ───────────
                 isRent
                     ? GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ScheduleDetailPage(booking: {
-                                'bookingId': request['bookingId'], 
-                                'vehicleId': request['vehicleData']['id'],
-                                'renterId': request['renterId'],
-                                'renterName': '${request['Acc FName']} ${request['Acc LName']}',
-                                'tel': request['Acc Phone'],
-                                'rating': request['Acc Rate'].toString(),
-                                'startDate': startDateParts[0],
-                                'endDate': endDateParts[0],
-                                'startTime': startDateParts.length > 1 ? startDateParts[1] : '',
-                                'endTime': endDateParts.length > 1 ? endDateParts[1] : '',
-                                'status': request['Rent Status'],
-                                'remark': request['remark'] ?? '-',
-                              }),
+                              builder: (context) => ScheduleDetailPage(
+                                booking: {
+                                  'bookingId': request['bookingId'],
+                                  'vehicleId': request['vehicleData']['id'],
+                                  'renterId': request['renterId'],
+                                  'renterName':
+                                      '${request['Acc FName']} ${request['Acc LName']}',
+                                  'tel': request['Acc Phone'],
+                                  'rating': request['Acc Rate'].toString(),
+                                  'startDate': startDateParts[0],
+                                  'endDate': endDateParts[0],
+                                  'startTime': startDateParts.length > 1
+                                      ? startDateParts[1]
+                                      : '',
+                                  'endTime': endDateParts.length > 1
+                                      ? endDateParts[1]
+                                      : '',
+                                  'status': request['Rent Status'],
+                                  'remark': request['remark'] ?? '-',
+                                },
+                              ),
                             ),
                           );
                         },
@@ -137,25 +187,42 @@ class RequestCard extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8D354), 
+                            color: const Color(0xFFE8D354),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Center(
-                            child: Text('Manage Request', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                            child: Text(
+                              'Manage Request',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
                       )
                     : GestureDetector(
                         onTap: () {
-                          // ✅ แก้ไข: ส่ง bookingId และ vehicleId ไปให้ TakePhotoPage ครบถ้วน
-                          final String bookingId = (request['bookingId'] ?? '').toString().trim();
-                          final String vehicleId = (request['vehicleData']['id'] ?? '').toString().trim();
-                          final String vehicleName = (request['vehicleData']['V Name'] ?? 'Vehicle').toString();
+                          final String bookingId = (request['bookingId'] ?? '')
+                              .toString()
+                              .trim();
+                          final String vehicleId =
+                              (request['vehicleData']['id'] ?? '')
+                                  .toString()
+                                  .trim();
+                          final String vehicleName =
+                              (request['vehicleData']['V Name'] ?? 'Vehicle')
+                                  .toString();
 
                           if (bookingId.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Error: Booking ID is missing!', style: TextStyle(fontFamily: 'Poppins')),
+                                content: Text(
+                                  'Error: Booking ID is missing!',
+                                  style: TextStyle(fontFamily: 'Poppins'),
+                                ),
                                 backgroundColor: Colors.redAccent,
                               ),
                             );
@@ -163,12 +230,12 @@ class RequestCard extends StatelessWidget {
                           }
 
                           Navigator.push(
-                            context, 
+                            context,
                             MaterialPageRoute(
                               builder: (context) => TakePhotoPage(
                                 vehicleName: vehicleName,
                                 vehicleId: vehicleId,
-                                bookingId: bookingId, // ✅ ส่ง bookingId ไปด้วยแล้ว
+                                bookingId: bookingId,
                               ),
                             ),
                           );
@@ -186,13 +253,31 @@ class RequestCard extends StatelessWidget {
   Widget _buildStatusBadge(String text, bool isRent) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: isRent ? const Color(0xFFD39A3D) : const Color(0xFF6B66CA), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: isRent ? const Color(0xFFD39A3D) : const Color(0xFF6B66CA),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+          Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );
@@ -202,8 +287,21 @@ class RequestCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(color: const Color(0xFF6B66CA), borderRadius: BorderRadius.circular(10)),
-      child: const Center(child: Text('Accept Hand in', style: TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white))),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6B66CA),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Center(
+        child: Text(
+          'Accept Hand in',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }

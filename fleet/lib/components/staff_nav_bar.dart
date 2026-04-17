@@ -14,7 +14,8 @@ class StaffNavBar extends StatefulWidget {
   State<StaffNavBar> createState() => _StaffNavBarState();
 }
 
-class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStateMixin {
+class _StaffNavBarState extends State<StaffNavBar>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
 
@@ -37,26 +38,32 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _positionAnimation = Tween<double>(
-      begin: widget.currentIndex.toDouble(),
-      end: widget.currentIndex.toDouble(),
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic, // 💡 เปลี่ยน Curve ให้พริ้วไหลลื่นขึ้น
-    ));
+    _positionAnimation =
+        Tween<double>(
+          begin: widget.currentIndex.toDouble(),
+          end: widget.currentIndex.toDouble(),
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
   }
 
   @override
   void didUpdateWidget(covariant StaffNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex != widget.currentIndex) {
-      _positionAnimation = Tween<double>(
-        begin: oldWidget.currentIndex.toDouble(),
-        end: widget.currentIndex.toDouble(),
-      ).animate(CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutCubic,
-      ));
+      _positionAnimation =
+          Tween<double>(
+            begin: oldWidget.currentIndex.toDouble(),
+            end: widget.currentIndex.toDouble(),
+          ).animate(
+            CurvedAnimation(
+              parent: _animationController,
+              curve: Curves.easeOutCubic,
+            ),
+          );
       _animationController.forward(from: 0.0);
     }
   }
@@ -75,23 +82,21 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
       animation: _positionAnimation,
       builder: (context, child) {
         return SizedBox(
-          height: 100, 
+          height: 100,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // 1. ตัวพื้นหลัง Gradient พร้อมรอยเว้าแบบใหม่
               Positioned(
                 bottom: 0,
                 child: CustomPaint(
-                  size: Size(screenWidth, 80), 
+                  size: Size(screenWidth, 80),
                   painter: _NavBarPainter(
                     animatedIndex: _positionAnimation.value,
                     itemCount: 3,
                   ),
                 ),
               ),
-              
-              // 2. แถวของไอคอน (Unselected)
+
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -100,7 +105,8 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: List.generate(3, (index) {
-                    final bool isActive = _positionAnimation.value.round() == index;
+                    final bool isActive =
+                        _positionAnimation.value.round() == index;
                     return GestureDetector(
                       onTap: () => widget.onTap(index),
                       behavior: HitTestBehavior.opaque,
@@ -121,15 +127,14 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
                 ),
               ),
 
-              // 3. วงกลมที่ลอยอยู่ในรอยเว้า (Selected)
               Positioned(
                 left: _getActiveIconX(screenWidth, _positionAnimation.value),
-                top: 8, // 💡 ปรับให้จมลงไปในหลุมเว้าพอดีตามภาพ
+                top: 8,
                 child: Container(
-                  width: 56, // 💡 ขยายขนาดขึ้นนิดนึงให้ดูเต็มหลุม
+                  width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200, // 💡 สีเทาอ่อนเหมือนในภาพเรฟเฟอเรนซ์
+                    color: Colors.grey.shade200,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -155,11 +160,10 @@ class _StaffNavBarState extends State<StaffNavBar> with SingleTickerProviderStat
 
   double _getActiveIconX(double screenWidth, double animatedIndex) {
     final itemWidth = screenWidth / 3;
-    return (animatedIndex * itemWidth) + (itemWidth / 2) - 28; // 28 คือครึ่งนึงของ width 56
+    return (animatedIndex * itemWidth) + (itemWidth / 2) - 28;
   }
 }
 
-// 💡 สร้างรูปร่างรอยเว้าใหม่ทั้งหมด
 class _NavBarPainter extends CustomPainter {
   final double animatedIndex;
   final int itemCount;
@@ -182,39 +186,46 @@ class _NavBarPainter extends CustomPainter {
     final notchCenterX = (animatedIndex * itemWidth) + (itemWidth / 2);
 
     final path = Path();
-    const double notchWidth = 96.0; // ความกว้างของรอยเว้า (ให้กว้างพอรับกับวงกลม 56px)
-    const double notchDepth = 48.0; // ความลึกของรอยเว้า
-    
-    path.moveTo(0, 0); 
-    
-    // เส้นตรงด้านซ้ายก่อนถึงรอยเว้า
+    const double notchWidth = 96.0;
+    const double notchDepth = 48.0;
+
+    path.moveTo(0, 0);
+
     path.lineTo(notchCenterX - (notchWidth / 2), 0);
-    
-    // 💡 วาดส่วนเว้า (Notch) ทรงกระดิ่งคว่ำให้สมูทที่สุด (Bezier Curve)
-    // โค้งซ้ายลง
+
     path.cubicTo(
-      notchCenterX - 25, 0, 
-      notchCenterX - 35, notchDepth, 
-      notchCenterX, notchDepth,
+      notchCenterX - 25,
+      0,
+      notchCenterX - 35,
+      notchDepth,
+      notchCenterX,
+      notchDepth,
     );
-    // โค้งขวาขึ้น
+
     path.cubicTo(
-      notchCenterX + 35, notchDepth, 
-      notchCenterX + 25, 0, 
-      notchCenterX + (notchWidth / 2), 0,
+      notchCenterX + 35,
+      notchDepth,
+      notchCenterX + 25,
+      0,
+      notchCenterX + (notchWidth / 2),
+      0,
     );
-    
-    // เส้นตรงด้านขวาไปจนสุด
+
     path.lineTo(size.width, 0);
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();
 
-    // วาดเงาเพื่อเพิ่มมิติให้ตัวบาร์
-    canvas.drawShadow(path.shift(const Offset(0, -3)), Colors.black.withOpacity(0.2), 10.0, true);
+    canvas.drawShadow(
+      path.shift(const Offset(0, -3)),
+      Colors.black.withOpacity(0.2),
+      10.0,
+      true,
+    );
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _NavBarPainter oldDelegate) => oldDelegate.animatedIndex != animatedIndex;
+  bool shouldRepaint(covariant _NavBarPainter oldDelegate) =>
+      oldDelegate.animatedIndex != animatedIndex;
 }

@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
-import '../main.dart'; // 💡 เพิ่มบรรทัดนี้ เพื่อเชื่อมกับด่านตรวจ RoleRouter ใน main.dart
+import 'package:firebase_auth/firebase_auth.dart';
+import '../main.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,7 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _isLoading = false; 
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,7 +24,6 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // 💡 อัปเดตฟังก์ชัน _handleLogin ให้ส่งไปหา RoleRouter
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -37,17 +36,15 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     setState(() {
-      _isLoading = true; // เริ่มหมุนติ้วๆ
+      _isLoading = true;
     });
 
     try {
-      // 1. ล็อกอินผ่าน Firebase Auth
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // 💡 2. ล็อกอินสำเร็จปุ๊บ ไม่ต้องดึง Firestore เองแล้ว โยนให้ RoleRouter จัดการแยกหน้าให้เลย
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -55,7 +52,6 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      // จัดการ Error กรณีรหัสผิดหรือไม่มีอีเมลในระบบ
       String errorMessage = 'Login failed. Please try again.';
       if (e.code == 'user-not-found' || e.code == 'invalid-email') {
         errorMessage = 'No user found for that email.';
@@ -64,14 +60,14 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false; // หยุดโหลด
+          _isLoading = false;
         });
       }
     }
@@ -188,10 +184,7 @@ class _LoginPageState extends State<LoginPage> {
             decoration: InputDecoration(
               border: const UnderlineInputBorder(),
               labelText: 'Password',
-              labelStyle: const TextStyle(
-                fontFamily: "Poppins",
-                fontSize: 14,
-              ),
+              labelStyle: const TextStyle(fontFamily: "Poppins", fontSize: 14),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword
@@ -225,8 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               child: ElevatedButton(
-                // 💡 ปิดปุ่มกดไม่ให้กดซ้ำตอนกำลังโหลด
-                onPressed: _isLoading ? null : _handleLogin, 
+                onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
@@ -235,11 +227,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 child: _isLoading
-                    // 💡 แสดงวงแหวนโหลดถ้ากำลัง Login
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text(
                         'Login',

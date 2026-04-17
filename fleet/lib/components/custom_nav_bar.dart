@@ -45,13 +45,16 @@ class _CustomNavBarState extends State<CustomNavBar>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _positionAnimation = Tween<double>(
-      begin: widget.currentIndex.toDouble(),
-      end: widget.currentIndex.toDouble(),
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _positionAnimation =
+        Tween<double>(
+          begin: widget.currentIndex.toDouble(),
+          end: widget.currentIndex.toDouble(),
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
   }
 
   @override
@@ -59,13 +62,16 @@ class _CustomNavBarState extends State<CustomNavBar>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex != widget.currentIndex) {
       _previousIndex = oldWidget.currentIndex;
-      _positionAnimation = Tween<double>(
-        begin: _previousIndex.toDouble(),
-        end: widget.currentIndex.toDouble(),
-      ).animate(CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ));
+      _positionAnimation =
+          Tween<double>(
+            begin: _previousIndex.toDouble(),
+            end: widget.currentIndex.toDouble(),
+          ).animate(
+            CurvedAnimation(
+              parent: _animationController,
+              curve: Curves.easeInOut,
+            ),
+          );
       _animationController.forward(from: 0.0);
     }
   }
@@ -110,7 +116,9 @@ class _CustomNavBarState extends State<CustomNavBar>
               // Floating active icon
               Positioned(
                 left: _getActiveIconX(
-                    MediaQuery.of(context).size.width, _positionAnimation.value),
+                  MediaQuery.of(context).size.width,
+                  _positionAnimation.value,
+                ),
                 top: -2,
                 child: Container(
                   width: 52,
@@ -150,8 +158,7 @@ class _CustomNavBarState extends State<CustomNavBar>
   }
 
   Widget _buildNavItem(int index) {
-    final bool isActive =
-        (_getNearestIndex(_positionAnimation.value) == index);
+    final bool isActive = (_getNearestIndex(_positionAnimation.value) == index);
 
     return GestureDetector(
       onTap: () => widget.onTap(index),
@@ -176,10 +183,7 @@ class _NavBarPainter extends CustomPainter {
   final double animatedIndex;
   final int itemCount;
 
-  _NavBarPainter({
-    required this.animatedIndex,
-    required this.itemCount,
-  });
+  _NavBarPainter({required this.animatedIndex, required this.itemCount});
 
   @override
   void paint(Canvas canvas, Size size) {

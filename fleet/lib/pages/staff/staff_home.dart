@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Firestore
-import '../../components/vehicle_info_card.dart'; 
-import 'vehicle_request.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../components/vehicle_info_card.dart';
+import 'vehicle_request.dart';
 
 class StaffHomePage extends StatefulWidget {
   const StaffHomePage({super.key});
@@ -13,7 +13,6 @@ class StaffHomePage extends StatefulWidget {
 class _StaffHomePageState extends State<StaffHomePage> {
   bool isAddTab = true;
 
-  // 💡 State สำหรับเก็บข้อมูลจริง และสถานะการโหลด
   bool _isLoading = true;
   List<Map<String, dynamic>> _pendingRequests = [];
 
@@ -23,26 +22,23 @@ class _StaffHomePageState extends State<StaffHomePage> {
     _fetchPendingRequests();
   }
 
-  // ==========================================
-  // 💡 ฟังก์ชันดึงคำขอร้อง (Pending) ทั้งหมดจาก Firebase
-  // ==========================================
   Future<void> _fetchPendingRequests() async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('vehicles')
-          .where('status', isEqualTo: 'pending') 
+          .where('status', isEqualTo: 'pending')
           .get();
 
       List<Map<String, dynamic>> fetchedRequests = [];
       for (var doc in snapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
-        
+
         String pType = data['pending_type'] ?? 'Add';
 
         fetchedRequests.add({
           'id': doc.id,
-          'type': pType, 
-          
+          'type': pType,
+
           'name': data['vehicle_name'] ?? 'Unknown',
           'rating': (data['rating'] ?? 0.0).toStringAsFixed(1),
           'plate': data['license_plate'] ?? '-',
@@ -50,8 +46,11 @@ class _StaffHomePageState extends State<StaffHomePage> {
           'vType': data['vehicle_type'] ?? 'Car',
           'address': data['address'] ?? '-',
           'price': (data['price_per_day'] ?? 0).toString(),
-          'image': (data['images'] != null && (data['images'] as List).isNotEmpty) ? data['images'][0] : 'assets/images/car.jpg',
-          
+          'image':
+              (data['images'] != null && (data['images'] as List).isNotEmpty)
+              ? data['images'][0]
+              : 'assets/images/car.jpg',
+
           'V Name': data['vehicle_name'] ?? 'Unknown',
           'V_Rate': (data['rating'] ?? 0.0).toDouble(),
           'V Plate': data['license_plate'] ?? '-',
@@ -61,9 +60,11 @@ class _StaffHomePageState extends State<StaffHomePage> {
           'V Fuel': data['fuel'] ?? '-',
           'V Address': data['address'] ?? '-',
           'V Price': (data['price_per_day'] ?? 0).toDouble(),
-          // 💡 NEW: ดึงค่า deposit มาด้วย (ถ้าไม่มีให้เป็น 0)
-          'V Deposit': (data['deposit'] ?? 0), 
-          'imagePath': (data['images'] != null && (data['images'] as List).isNotEmpty) ? data['images'][0] : 'assets/images/car.jpg',
+          'V Deposit': (data['deposit'] ?? 0),
+          'imagePath':
+              (data['images'] != null && (data['images'] as List).isNotEmpty)
+              ? data['images'][0]
+              : 'assets/images/car.jpg',
           'images': data['images'] ?? [],
         });
       }
@@ -86,7 +87,9 @@ class _StaffHomePageState extends State<StaffHomePage> {
   Widget build(BuildContext context) {
     int totalAll = _pendingRequests.length;
     int totalAdd = _pendingRequests.where((req) => req['type'] == 'Add').length;
-    int totalDelete = _pendingRequests.where((req) => req['type'] == 'Delete').length;
+    int totalDelete = _pendingRequests
+        .where((req) => req['type'] == 'Delete')
+        .length;
 
     List<Map<String, dynamic>> displayList = _pendingRequests
         .where((req) => req['type'] == (isAddTab ? 'Add' : 'Delete'))
@@ -94,14 +97,17 @@ class _StaffHomePageState extends State<StaffHomePage> {
 
     return Scaffold(
       backgroundColor: const Color.fromRGBO(248, 248, 250, 1.0),
-      
+
       appBar: AppBar(
         toolbarHeight: 90,
         elevation: 0,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color.fromRGBO(172, 114, 161, 1.0), Color.fromRGBO(7, 14, 42, 1.0)],
+              colors: [
+                Color.fromRGBO(172, 114, 161, 1.0),
+                Color.fromRGBO(7, 14, 42, 1.0),
+              ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -112,8 +118,23 @@ class _StaffHomePageState extends State<StaffHomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome back,', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, color: Colors.white70)),
-              Text('Admin Dashboard', style: TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(
+                'Welcome back,',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+              Text(
+                'Admin Dashboard',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ],
           ),
         ),
@@ -127,17 +148,34 @@ class _StaffHomePageState extends State<StaffHomePage> {
             padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatItem('Total', totalAll.toString(), Colors.black87),
                 _buildDivider(),
-                _buildStatItem('Add', totalAdd.toString(), const Color(0xFF4CA0E6)),
+                _buildStatItem(
+                  'Add',
+                  totalAdd.toString(),
+                  const Color(0xFF4CA0E6),
+                ),
                 _buildDivider(),
-                _buildStatItem('Delete', totalDelete.toString(), const Color(0xFFE57373)),
+                _buildStatItem(
+                  'Delete',
+                  totalDelete.toString(),
+                  const Color(0xFFE57373),
+                ),
               ],
             ),
           ),
@@ -152,20 +190,28 @@ class _StaffHomePageState extends State<StaffHomePage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: Colors.grey.shade300), 
+                border: Border.all(color: Colors.grey.shade300),
               ),
               child: Stack(
                 children: [
                   AnimatedAlign(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeInOut,
-                    alignment: isAddTab ? Alignment.centerLeft : Alignment.centerRight,
+                    alignment: isAddTab
+                        ? Alignment.centerLeft
+                        : Alignment.centerRight,
                     child: Container(
                       width: 150,
                       decoration: BoxDecoration(
                         color: const Color.fromRGBO(7, 14, 42, 1.0),
                         borderRadius: BorderRadius.circular(25),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -176,7 +222,19 @@ class _StaffHomePageState extends State<StaffHomePage> {
                           onTap: () => setState(() => isAddTab = true),
                           behavior: HitTestBehavior.opaque,
                           child: Center(
-                            child: Text('Add Request', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: isAddTab ? FontWeight.bold : FontWeight.w500, color: isAddTab ? Colors.white : Colors.grey.shade600)),
+                            child: Text(
+                              'Add Request',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                fontWeight: isAddTab
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isAddTab
+                                    ? Colors.white
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -185,7 +243,19 @@ class _StaffHomePageState extends State<StaffHomePage> {
                           onTap: () => setState(() => isAddTab = false),
                           behavior: HitTestBehavior.opaque,
                           child: Center(
-                            child: Text('Delete Request', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: !isAddTab ? FontWeight.bold : FontWeight.w500, color: !isAddTab ? Colors.white : Colors.grey.shade600)),
+                            child: Text(
+                              'Delete Request',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                fontWeight: !isAddTab
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: !isAddTab
+                                    ? Colors.white
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -196,48 +266,65 @@ class _StaffHomePageState extends State<StaffHomePage> {
             ),
           ),
 
-          // List View 
+          // List View
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0)))
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color.fromRGBO(172, 114, 161, 1.0),
+                    ),
+                  )
                 : displayList.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.inbox_outlined, size: 50, color: Colors.grey.shade400),
-                            const SizedBox(height: 10),
-                            Text('No requests found.', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey.shade500)),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 50,
+                          color: Colors.grey.shade400,
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: displayList.length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 15),
-                            child: VehicleInfoCard(
-                              data: displayList[index],
-                              onTap: () async {
-                                // 💡 รอให้ Staff กดจัดการในหน้าถัดไปให้เสร็จ แล้วค่อยมารีเฟรชหน้านี้ใหม่
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => VehicleRequestPage(vehicle: displayList[index]),
-                                  ),
-                                );
-                                // สั่งโหลดข้อมูลใหม่เมื่อกลับมา
-                                if (mounted) {
-                                  setState(() => _isLoading = true);
-                                  _fetchPendingRequests(); 
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'No requests found.',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: displayList.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 15),
+                        child: VehicleInfoCard(
+                          data: displayList[index],
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VehicleRequestPage(
+                                  vehicle: displayList[index],
+                                ),
+                              ),
+                            );
+                            if (mounted) {
+                              setState(() => _isLoading = true);
+                              _fetchPendingRequests();
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -247,12 +334,29 @@ class _StaffHomePageState extends State<StaffHomePage> {
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontFamily: 'Poppins', fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 13,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildDivider() => Container(height: 35, width: 1.5, color: Colors.grey.shade200);
+  Widget _buildDivider() =>
+      Container(height: 35, width: 1.5, color: Colors.grey.shade200);
 }

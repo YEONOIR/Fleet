@@ -31,7 +31,7 @@ class _OwnerNavBarState extends State<OwnerNavBar>
   static const List<IconData> _filledIcons = [
     Icons.home,
     Icons.description,
-    Icons.calendar_month, 
+    Icons.calendar_month,
     Icons.notifications,
     Icons.person,
   ];
@@ -44,13 +44,16 @@ class _OwnerNavBarState extends State<OwnerNavBar>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _positionAnimation = Tween<double>(
-      begin: widget.currentIndex.toDouble(),
-      end: widget.currentIndex.toDouble(),
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _positionAnimation =
+        Tween<double>(
+          begin: widget.currentIndex.toDouble(),
+          end: widget.currentIndex.toDouble(),
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
   }
 
   @override
@@ -58,13 +61,16 @@ class _OwnerNavBarState extends State<OwnerNavBar>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex != widget.currentIndex) {
       _previousIndex = oldWidget.currentIndex;
-      _positionAnimation = Tween<double>(
-        begin: _previousIndex.toDouble(),
-        end: widget.currentIndex.toDouble(),
-      ).animate(CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ));
+      _positionAnimation =
+          Tween<double>(
+            begin: _previousIndex.toDouble(),
+            end: widget.currentIndex.toDouble(),
+          ).animate(
+            CurvedAnimation(
+              parent: _animationController,
+              curve: Curves.easeInOut,
+            ),
+          );
       _animationController.forward(from: 0.0);
     }
   }
@@ -108,7 +114,9 @@ class _OwnerNavBarState extends State<OwnerNavBar>
               ),
               Positioned(
                 left: _getActiveIconX(
-                    MediaQuery.of(context).size.width, _positionAnimation.value),
+                  MediaQuery.of(context).size.width,
+                  _positionAnimation.value,
+                ),
                 top: -2,
                 child: Container(
                   width: 52,
@@ -148,8 +156,7 @@ class _OwnerNavBarState extends State<OwnerNavBar>
   }
 
   Widget _buildNavItem(int index) {
-    final bool isActive =
-        (_getNearestIndex(_positionAnimation.value) == index);
+    final bool isActive = (_getNearestIndex(_positionAnimation.value) == index);
 
     return GestureDetector(
       onTap: () => widget.onTap(index),
@@ -174,10 +181,7 @@ class _NavBarPainter extends CustomPainter {
   final double animatedIndex;
   final int itemCount;
 
-  _NavBarPainter({
-    required this.animatedIndex,
-    required this.itemCount,
-  });
+  _NavBarPainter({required this.animatedIndex, required this.itemCount});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -215,7 +219,6 @@ class _NavBarPainter extends CustomPainter {
       notchCenterX - notchRadius * 0.7,
       barTop - notchDepth,
     );
-
 
     path.cubicTo(
       notchCenterX - notchRadius * 0.35,

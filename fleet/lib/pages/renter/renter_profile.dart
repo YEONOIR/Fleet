@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 💡 เพิ่ม Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 เพิ่ม Firestore
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../edit_profile.dart';
 
 class RenterProfilePage extends StatefulWidget {
@@ -11,7 +11,6 @@ class RenterProfilePage extends StatefulWidget {
 }
 
 class _RenterProfilePageState extends State<RenterProfilePage> {
-  // 💡 ตัวแปรเก็บข้อมูลจาก Firebase
   String _firstName = "Loading...";
   String _lastName = "";
   String _email = "Loading...";
@@ -25,7 +24,6 @@ class _RenterProfilePageState extends State<RenterProfilePage> {
     _fetchUserData();
   }
 
-  // 💡 ฟังก์ชันดึงข้อมูลจาก Database
   Future<void> _fetchUserData() async {
     try {
       User? currentUser = FirebaseAuth.instance.currentUser;
@@ -54,13 +52,12 @@ class _RenterProfilePageState extends State<RenterProfilePage> {
     }
   }
 
-  // 💡 ฟังก์ชัน Logout ออกจากระบบ Firebase
   Future<void> _handleLogout() async {
     await FirebaseAuth.instance.signOut();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logged out successfully')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Logged out successfully')));
       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     }
   }
@@ -69,192 +66,204 @@ class _RenterProfilePageState extends State<RenterProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))) // วงแหวนโหลดตอนดึงข้อมูล
-        : Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(top: 60, bottom: 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromRGBO(172, 114, 161, 1.0),
-                  Color.fromRGBO(7, 14, 42, 1.0),
-                ],
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color.fromRGBO(172, 114, 161, 1.0),
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: const Center(
-              child: Text(
-                'Your Profile',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-              child: Column(
-                children: [
-                  // ==========================================
-                  // 💡 ส่วนแสดงข้อมูลผู้ใช้ (เชื่อม Firebase แล้ว)
-                  // ==========================================
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 85,
-                        height: 85,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[200],
-                          border: Border.all(color: Colors.grey.shade300, width: 1),
-                          image: DecorationImage(
-                            // 💡 เช็คว่ามีรูปใน Database ไหม ถ้าไม่มีใช้ Default
-                            image: _profileImage.isNotEmpty
-                                ? NetworkImage(_profileImage) as ImageProvider
-                                : const AssetImage('assets/icons/avatar.jpg'),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+            )
+          : Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(top: 60, bottom: 20),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Color.fromRGBO(172, 114, 161, 1.0),
+                        Color.fromRGBO(7, 14, 42, 1.0),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Your Profile',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
+                    ),
+                  ),
+                ),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 25,
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '$_firstName $_lastName', // 💡 ชื่อจริง-นามสกุล
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color.fromRGBO(7, 14, 42, 1.0),
+                            Container(
+                              width: 85,
+                              height: 85,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[200],
+                                border: Border.all(
+                                  color: Colors.grey.shade300,
+                                  width: 1,
+                                ),
+                                image: DecorationImage(
+                                  image: _profileImage.isNotEmpty
+                                      ? NetworkImage(_profileImage)
+                                            as ImageProvider
+                                      : const AssetImage(
+                                          'assets/icons/avatar.jpg',
+                                        ),
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 5),
-                            Text(
-                              'Email : $_email', // 💡 อีเมล
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              'Address : $_address', // 💡 ที่อยู่
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                color: Colors.black87,
-                                height: 1.4,
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '$_firstName $_lastName',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color.fromRGBO(7, 14, 42, 1.0),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    'Email : $_email',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 13,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    'Address : $_address',
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 13,
+                                      color: Colors.black87,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
 
-                  const SizedBox(height: 35),
+                        const SizedBox(height: 35),
 
-                  _buildProfileMenu(
-                    icon: Icons.edit_outlined,
-                    title: 'Edit profile',
-                    onTap: () async { // 💡 1. ใส่ async
-                      // 💡 2. ใช้ await รอรับค่าที่ส่งกลับมาจากหน้า Edit
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfilePage(),
+                        _buildProfileMenu(
+                          icon: Icons.edit_outlined,
+                          title: 'Edit profile',
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditProfilePage(),
+                              ),
+                            );
+
+                            if (result == true) {
+                              setState(() {
+                                _isLoading = true;
+                              });
+                              _fetchUserData();
+                            }
+                          },
                         ),
-                      );
 
-                      // 💡 3. ถ้าค่าที่ส่งกลับมาเป็น true ให้ทำการดึงข้อมูลใหม่
-                      if (result == true) {
-                        setState(() {
-                          _isLoading = true; // โชว์วงแหวนโหลดแป๊บนึง
-                        });
-                        _fetchUserData(); // เรียกฟังก์ชันโหลดข้อมูลจาก Firebase ใหม่
-                      }
-                    },
-                  ),
-
-                  // toggle button
-                  _buildProfileMenu(
-                    icon: Icons.swap_horiz_rounded,
-                    title: 'Switch mode',
-                    subtitle: 'Change to Owner Profile',
-                    trailing: GestureDetector(
-                      onTap: () {
-                        Navigator.pushReplacementNamed(
-                          context, 
-                          '/owner',
-                          arguments: {'initialIndex': 4},
-                        );
-                      },
-                      child: Container(
-                        width: 46,
-                        height: 24, 
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(230, 226, 233, 1.0), 
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color.fromRGBO(136, 128, 142, 1.0), 
-                            width: 1.5,
+                        // toggle button
+                        _buildProfileMenu(
+                          icon: Icons.swap_horiz_rounded,
+                          title: 'Switch mode',
+                          subtitle: 'Change to Owner Profile',
+                          trailing: GestureDetector(
+                            onTap: () {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                '/owner',
+                                arguments: {'initialIndex': 4},
+                              );
+                            },
+                            child: Container(
+                              width: 46,
+                              height: 24,
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: const Color.fromRGBO(230, 226, 233, 1.0),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color.fromRGBO(
+                                    136,
+                                    128,
+                                    142,
+                                    1.0,
+                                  ),
+                                  width: 1.5,
+                                ),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                decoration: const BoxDecoration(
+                                  color: Color.fromRGBO(136, 128, 142, 1.0),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
                           ),
+                          onTap: () {
+                            Navigator.pushReplacementNamed(
+                              context,
+                              '/owner',
+                              arguments: {'initialIndex': 4},
+                            );
+                          },
                         ),
-                        alignment: Alignment.centerLeft, 
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: const BoxDecoration(
-                            color: Color.fromRGBO(136, 128, 142, 1.0),
-                            shape: BoxShape.circle,
-                          ),
+
+                        const SizedBox(height: 40),
+
+                        // Log out
+                        _buildProfileMenu(
+                          icon: Icons.logout,
+                          title: 'Log out',
+                          isLogout: true,
+                          onTap: _handleLogout,
                         ),
-                      ),
+
+                        const SizedBox(height: 100),
+                      ],
                     ),
-                    onTap: () {
-                      Navigator.pushReplacementNamed(
-                        context, 
-                        '/owner',
-                        arguments: {'initialIndex': 4},
-                      );
-                    },
                   ),
-
-                  const SizedBox(height: 40),
-
-                  // Log out
-                  _buildProfileMenu(
-                    icon: Icons.logout,
-                    title: 'Log out',
-                    isLogout: true,
-                    onTap: _handleLogout, // 💡 เรียกฟังก์ชัน Logout ที่เขียนไว้ด้านบน
-                  ),
-
-                  const SizedBox(height: 100),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 

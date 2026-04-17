@@ -1,29 +1,29 @@
 import 'dart:io';
-import 'dart:convert'; // 💡 สำหรับ json.decode
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
-import 'package:http/http.dart' as http; // 💡 สำหรับติดต่อ ImgBB API
-import 'owner/check_hand_in.dart'; 
-import 'owner/add_vehicle.dart'; 
-import 'staff/check_vehicle.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'owner/check_hand_in.dart';
+import 'owner/add_vehicle.dart';
+import 'staff/check_vehicle.dart';
 
 class TakePhotoPage extends StatefulWidget {
   final String vehicleName;
-  final bool isStaff; 
-  final String? ownerId; 
-  final String? vehicleId; 
+  final bool isStaff;
+  final String? ownerId;
+  final String? vehicleId;
   final List<String>? ownerImages;
-  final bool isRenterPickUp; 
-  final String? bookingId; 
+  final bool isRenterPickUp;
+  final String? bookingId;
 
   const TakePhotoPage({
-    super.key, 
-    required this.vehicleName, 
-    this.isStaff = false, 
-    this.ownerId, 
-    this.vehicleId, 
-    this.ownerImages, 
+    super.key,
+    required this.vehicleName,
+    this.isStaff = false,
+    this.ownerId,
+    this.vehicleId,
+    this.ownerImages,
     this.isRenterPickUp = false,
     this.bookingId,
   });
@@ -34,9 +34,8 @@ class TakePhotoPage extends StatefulWidget {
 
 class _TakePhotoPageState extends State<TakePhotoPage> {
   final ImagePicker _picker = ImagePicker();
-  
-  // 💡 ใส่ API Key ของ ImgBB ที่นี่
-  final String imgBBKey = '0a99d5ebe05123a47328ece31b15711c'; 
+
+  final String imgBBKey = '0a99d5ebe05123a47328ece31b15711c';
 
   List<File?> afterImages = [null, null, null, null];
   final List<String> photoLabels = ['Front', 'Back', 'Left', 'Right'];
@@ -50,23 +49,22 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // ==========================================
-  // 💡 ฟังก์ชันอัปโหลดรูปภาพไป ImgBB
-  // ==========================================
   Future<String?> _uploadImageToImgBB(File imageFile) async {
     try {
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.imgbb.com/1/upload?key=$imgBBKey'),
       );
-      
-      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
-      
+
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
       final response = await request.send();
       if (response.statusCode == 200) {
         final responseData = await response.stream.bytesToString();
         final jsonResponse = json.decode(responseData);
-        return jsonResponse['data']['url']; // 💡 คืนค่า URL ตรงๆ มาเลย
+        return jsonResponse['data']['url'];
       }
       return null;
     } catch (e) {
@@ -75,19 +73,20 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     }
   }
 
-  // ==========================================
-  // 💡 ฟังก์ชันประมวลผลการรับรถ (Renter Pick Up)
-  // ==========================================
   Future<void> _processRenterPickUp(List<File> images) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: Color.fromRGBO(172, 114, 161, 1.0))),
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          color: Color.fromRGBO(172, 114, 161, 1.0),
+        ),
+      ),
     );
 
     try {
       List<String> uploadedUrls = [];
-      
+
       for (int i = 0; i < images.length; i++) {
         String? url = await _uploadImageToImgBB(images[i]);
         if (url != null) {
@@ -97,46 +96,51 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
         }
       }
 
-      // 💡 อัปเดตข้อมูลลง Firestore หลังจากได้ URL ครบแล้ว
       if (widget.bookingId != null) {
-        await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).update({
-          'status': 'using',
-          'before_images': uploadedUrls, // เก็บ List ของ URL จาก ImgBB
-        });
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(widget.bookingId)
+            .update({'status': 'using', 'before_images': uploadedUrls});
       }
 
       if (widget.vehicleId != null) {
-        await FirebaseFirestore.instance.collection('vehicles').doc(widget.vehicleId).update({
-          'status': 'using', 
-        });
+        await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(widget.vehicleId)
+            .update({'status': 'using'});
       }
 
       if (context.mounted) {
-        Navigator.pop(context); // ปิด Loading
+        Navigator.pop(context);
         Navigator.pushNamedAndRemoveUntil(
-          context, 
-          '/renter', 
-          arguments: {'mainIndex': 1, 'tabIndex': 1}, 
-          (route) => false
+          context,
+          '/renter',
+          arguments: {'mainIndex': 1, 'tabIndex': 1},
+          (route) => false,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Vehicle picked up successfully!', style: TextStyle(fontFamily: 'Poppins')), 
-            backgroundColor: Color(0xFF2E7D6E)
-          )
+            content: Text(
+              'Vehicle picked up successfully!',
+              style: TextStyle(fontFamily: 'Poppins'),
+            ),
+            backgroundColor: Color(0xFF2E7D6E),
+          ),
         );
       }
-
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Upload failed: $e', style: const TextStyle(fontFamily: 'Poppins')), 
-            backgroundColor: Colors.redAccent, 
-            duration: const Duration(seconds: 5)
-          )
+            content: Text(
+              'Upload failed: $e',
+              style: const TextStyle(fontFamily: 'Poppins'),
+            ),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
@@ -146,36 +150,39 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     List<File> completedImages = afterImages.whereType<File>().toList();
     if (widget.isRenterPickUp) {
       _processRenterPickUp(completedImages);
-      return; 
+      return;
     }
-    
+
     _navigateBasedOnContext(completedImages);
   }
 
   void _navigateBasedOnContext(List<File> completedImages) {
-    List<String> allImagePaths = completedImages.map((file) => file.path).toList();
-    
+    List<String> allImagePaths = completedImages
+        .map((file) => file.path)
+        .toList();
+
     if (widget.isStaff) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CheckVehiclePage(
-            vehicleId: widget.vehicleId!, 
+            vehicleId: widget.vehicleId!,
             vehicleName: widget.vehicleName,
-            ownerId: widget.ownerId!, 
-            ownerImages: widget.ownerImages ?? [], 
-            staffImages: completedImages
-          )
-        )
+            ownerId: widget.ownerId!,
+            ownerImages: widget.ownerImages ?? [],
+            staffImages: completedImages,
+          ),
+        ),
       );
     } else if (widget.vehicleName == 'Edit Photos') {
       Navigator.pop(context, allImagePaths);
     } else if (widget.vehicleName == 'New Vehicle') {
       Navigator.pushReplacement(
-        context, 
+        context,
         MaterialPageRoute(
-          builder: (context) => AddVehiclePage(vehicleImagePaths: allImagePaths)
-        )
+          builder: (context) =>
+              AddVehiclePage(vehicleImagePaths: allImagePaths),
+        ),
       );
     } else {
       final String bId = (widget.bookingId ?? '').trim();
@@ -183,7 +190,10 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
       if (bId.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error: Booking ID is missing. Cannot proceed.', style: TextStyle(fontFamily: 'Poppins')),
+            content: Text(
+              'Error: Booking ID is missing. Cannot proceed.',
+              style: TextStyle(fontFamily: 'Poppins'),
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -208,19 +218,41 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildMainUI(); 
+    return _buildMainUI();
   }
 
   Widget _buildMainUI() {
-    bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
+    bool isNewVehicle =
+        widget.vehicleName == 'New Vehicle' ||
+        widget.vehicleName == 'Edit Photos';
     List<File> completedImages = afterImages.whereType<File>().toList();
     bool isConfirmEnabled = completedImages.length == 4;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color.fromRGBO(172, 114, 161, 1.0), Color.fromRGBO(7, 14, 42, 1.0)]))),
-        title: Text(widget.isRenterPickUp ? 'Pick Up Inspection' : (widget.isStaff ? 'Staff Check Photos' : (isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos')), style: const TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color.fromRGBO(172, 114, 161, 1.0),
+                Color.fromRGBO(7, 14, 42, 1.0),
+              ],
+            ),
+          ),
+        ),
+        title: Text(
+          widget.isRenterPickUp
+              ? 'Pick Up Inspection'
+              : (widget.isStaff
+                    ? 'Staff Check Photos'
+                    : (isNewVehicle ? 'Add Vehicle Photos' : 'Take Photos')),
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -231,21 +263,64 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  Text(widget.isRenterPickUp ? 'Verify Vehicle Condition' : widget.vehicleName, style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    widget.isRenterPickUp
+                        ? 'Verify Vehicle Condition'
+                        : widget.vehicleName,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 30),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 0.85),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: 0.85,
+                        ),
                     itemCount: 4,
                     itemBuilder: (context, index) {
                       return GestureDetector(
                         onTap: () => _showPickerOptions(index),
                         child: Container(
-                          decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey.shade400)),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.grey.shade400),
+                          ),
                           child: afterImages[index] != null
-                              ? ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.file(afterImages[index]!, fit: BoxFit.cover))
-                              : Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.camera_alt, color: Colors.grey, size: 40), const SizedBox(height: 10), Text(photoLabels[index], style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.grey))]),
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(15),
+                                  child: Image.file(
+                                    afterImages[index]!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.grey,
+                                      size: 40,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      photoLabels[index],
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       );
                     },
@@ -260,9 +335,22 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromRGBO(42, 35, 66, 1.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 onPressed: isConfirmEnabled ? _goToNextPage : null,
-                child: Text(widget.isRenterPickUp ? 'Confirm Pick Up' : 'Next', style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text(
+                  widget.isRenterPickUp ? 'Confirm Pick Up' : 'Next',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ),
@@ -271,19 +359,16 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
     );
   }
 
-  // ==========================================
-  // 💡 แสดง Modal หรือเปิดกล้องตามเงื่อนไข
-  // ==========================================
   void _showPickerOptions(int index) {
-    bool isNewVehicle = widget.vehicleName == 'New Vehicle' || widget.vehicleName == 'Edit Photos';
+    bool isNewVehicle =
+        widget.vehicleName == 'New Vehicle' ||
+        widget.vehicleName == 'Edit Photos';
 
-    // 💡 ถ้าไม่ใช่หน้าเพิ่มรถหรือแก้ไขรูป ให้บังคับเปิดกล้องทันทีเพื่อป้องกันการเอารูปในอัลบั้มมาใช้
     if (!isNewVehicle) {
       _pickImage(index, ImageSource.camera);
       return;
     }
 
-    // 💡 โชว์ Modal เลือกรูปเฉพาะตอนลงทะเบียนรถใหม่หรือแก้รูปเท่านั้น
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -294,16 +379,34 @@ class _TakePhotoPageState extends State<TakePhotoPage> {
           child: Wrap(
             children: <Widget>[
               ListTile(
-                leading: const Icon(Icons.photo_camera, color: Color(0xFF070E2A)),
-                title: const Text('Take a photo', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                leading: const Icon(
+                  Icons.photo_camera,
+                  color: Color(0xFF070E2A),
+                ),
+                title: const Text(
+                  'Take a photo',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 onTap: () {
                   _pickImage(index, ImageSource.camera);
                   Navigator.of(context).pop();
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: Color(0xFFAC72A1)),
-                title: const Text('Choose from gallery', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: Color(0xFFAC72A1),
+                ),
+                title: const Text(
+                  'Choose from gallery',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 onTap: () {
                   _pickImage(index, ImageSource.gallery);
                   Navigator.of(context).pop();

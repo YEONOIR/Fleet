@@ -15,24 +15,23 @@ class RenterMainPage extends StatefulWidget {
 
 class _RenterMainPageState extends State<RenterMainPage> {
   int _currentIndex = 0;
-  int _rentTabIndex = 0; // 💡 สร้างตัวแปรมารับค่าแท็บด้านบนของหน้า Your Rent
-  bool _isInit = false; 
+  int _rentTabIndex = 0;
+  bool _isInit = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInit) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
       if (args != null) {
-        // 💡 1. รับค่าเมนูด้านล่าง (Bottom Nav)
         if (args.containsKey('mainIndex')) {
           _currentIndex = args['mainIndex'];
         } else if (args.containsKey('initialIndex')) {
-          _currentIndex = args['initialIndex']; // เผื่อมีการเรียกใช้แบบเก่า
+          _currentIndex = args['initialIndex'];
         }
 
-        // 💡 2. รับค่าแท็บด้านบนของ Your Rent
         if (args.containsKey('tabIndex')) {
           _rentTabIndex = args['tabIndex'];
         }
@@ -43,10 +42,9 @@ class _RenterMainPageState extends State<RenterMainPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 3. เอา const ออก และโยน _rentTabIndex เข้าไปใน RenterYourRentPage
     final List<Widget> pages = [
       const RenterHomePage(),
-      RenterYourRentPage(initialIndex: _rentTabIndex), // ส่งค่าแท็บที่ต้องการเปิดไปที่นี่
+      RenterYourRentPage(initialIndex: _rentTabIndex),
       const RenterSearchPage(),
       const RenterNotificationsPage(),
       const RenterProfilePage(),
@@ -54,10 +52,7 @@ class _RenterMainPageState extends State<RenterMainPage> {
 
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: CustomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {

@@ -1,9 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:simple_gradient_text/simple_gradient_text.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // เพิ่ม Import Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // เพิ่ม Import Firestore
-import 'package:firebase_core/firebase_core.dart'; // 💡 เพิ่มบรรทัดนี้เข้ามา
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -23,8 +23,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _addressController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _isLoading = false; // ตัวแปรจัดการสถานะ Loading
-  DateTime? _selectedDate; // ตัวแปรเก็บวันที่แบบ Date Object เพื่อส่งเข้า Firestore
+  bool _isLoading = false;
+  DateTime? _selectedDate;
 
   @override
   void dispose() {
@@ -61,14 +61,13 @@ class _SignUpPageState extends State<SignUpPage> {
     );
     if (picked != null) {
       setState(() {
-        _selectedDate = picked; // เก็บค่า Date เอาไว้
+        _selectedDate = picked;
         _dobController.text =
             '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
       });
     }
   }
 
- // แก้ไขฟังก์ชัน _handleSignUp โดยใช้ Temporary App แก้บัคเด้งไปหน้าหลัก
   Future<void> _handleSignUp() async {
     if (_nameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||
@@ -85,53 +84,53 @@ class _SignUpPageState extends State<SignUpPage> {
       _isLoading = true;
     });
 
-    FirebaseApp? tempApp; // สร้างตัวแปรแอปจำลอง
+    FirebaseApp? tempApp;
 
     try {
-      // 💡 1. สร้าง Instance ย่อยขึ้นมาเพื่อสมัครสมาชิก โดยอ้างอิง Config จากแอปหลัก
       tempApp = await Firebase.initializeApp(
         name: 'TemporarySignUpApp',
         options: Firebase.app().options,
       );
 
-      // 💡 2. ใช้ tempApp ในการสมัครสมาชิก (แอปหลักจะได้ไม่รับรู้ว่ามีการล็อกอิน)
-      UserCredential userCredential = await FirebaseAuth.instanceFor(app: tempApp)
-          .createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      UserCredential userCredential =
+          await FirebaseAuth.instanceFor(
+            app: tempApp,
+          ).createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
       String uid = userCredential.user!.uid;
 
-      // --- ส่วนการคัดแยกประเภท (Logic การแบ่ง Role) ---
-      String userRole = 'user'; // ค่าเริ่มต้น
+      String userRole = 'user';
       if (_emailController.text.trim().endsWith('@fleet-admin.com')) {
         userRole = 'staff';
       }
 
-      // 💡 3. บันทึกข้อมูลลง Firestore (อันนี้ใช้ Instance หลักตามปกติ)
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'first_name': _nameController.text.trim(),
         'last_name': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'address': _addressController.text.trim(),
-        'dob': _selectedDate != null ? Timestamp.fromDate(_selectedDate!) : null,
+        'dob': _selectedDate != null
+            ? Timestamp.fromDate(_selectedDate!)
+            : null,
         'id_card': _idCardController.text.trim(),
-        'role': userRole, 
+        'role': userRole,
         'profile_image': '',
         'wallet_balance': 0,
-        'renter_rating': 0, 
+        'renter_rating': 0,
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // ลบคำสั่ง signOut() เดิมทิ้งไปได้เลย เพราะเราไม่ได้ล็อกอินในแอปหลักแล้ว
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign up successful! Please log in to continue. 🎉')),
+          const SnackBar(
+            content: Text('Sign up successful! Please log in to continue.'),
+          ),
         );
-        Navigator.pop(context); // พากลับไปหน้า Login แบบเนียนๆ
+        Navigator.pop(context);
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
@@ -142,24 +141,23 @@ class _SignUpPageState extends State<SignUpPage> {
       } else if (e.code == 'invalid-email') {
         errorMessage = 'The email address is not valid.';
       }
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
-      // 💡 4. ทำลายแอปจำลองทิ้งซะ คืนหน่วยความจำ
       if (tempApp != null) {
         await tempApp.delete();
       }
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -167,7 +165,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -189,13 +187,10 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         child: SingleChildScrollView(
           child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: screenHeight,
-            ),
+            constraints: BoxConstraints(minHeight: screenHeight),
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // Top glassmorphism card (form area)
                 Positioned(
                   top: 30,
                   child: ClipRRect(
@@ -216,13 +211,11 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                   ),
                 ),
-                // Form content
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 50),
                   child: Column(
                     children: [
                       const SizedBox(height: 50),
-                      // Title
                       GradientText(
                         "Sign-up",
                         style: const TextStyle(
@@ -238,30 +231,25 @@ class _SignUpPageState extends State<SignUpPage> {
                         gradientDirection: GradientDirection.btt,
                       ),
                       const SizedBox(height: 8),
-                      // Name
                       _buildTextField(
                         controller: _nameController,
                         label: 'Name',
                         icon: Icons.person_outline_rounded,
                       ),
-                      // Last Name
                       _buildTextField(
                         controller: _lastNameController,
                         label: 'Last Name',
                       ),
-                      // Phone number
                       _buildTextField(
                         controller: _phoneController,
                         label: 'Phone number',
                         keyboardType: TextInputType.phone,
                       ),
-                      // ID card
                       _buildTextField(
                         controller: _idCardController,
                         label: 'ID card',
                         icon: Icons.badge_outlined,
                       ),
-                      // Date of birth
                       TextField(
                         controller: _dobController,
                         readOnly: true,
@@ -283,14 +271,12 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
                       ),
-                      // Email
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email',
                         icon: Icons.mail_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
                       ),
-                      // Password
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -319,14 +305,12 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ),
                       ),
-                      // Address
                       _buildTextField(
                         controller: _addressController,
                         label: 'Address',
                         icon: Icons.home_outlined,
                       ),
                       const SizedBox(height: 24),
-                      // Sign-up button
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -341,7 +325,6 @@ class _SignUpPageState extends State<SignUpPage> {
                             ),
                           ),
                           child: ElevatedButton(
-                            // ปิดการกดปุ่มระหว่างโหลด
                             onPressed: _isLoading ? null : _handleSignUp,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
@@ -350,7 +333,6 @@ class _SignUpPageState extends State<SignUpPage> {
                                 borderRadius: BorderRadius.circular(30),
                               ),
                             ),
-                            // แสดงวงแหวนโหลดถ้า _isLoading เป็น true
                             child: _isLoading
                                 ? const SizedBox(
                                     width: 24,
@@ -373,7 +355,6 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Already have account link
                       GestureDetector(
                         onTap: () {
                           Navigator.pop(context);
@@ -389,7 +370,6 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      // Bottom logo
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: BackdropFilter(
@@ -435,17 +415,11 @@ class _SignUpPageState extends State<SignUpPage> {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: const TextStyle(
-        fontFamily: "Poppins",
-        fontSize: 14,
-      ),
+      style: const TextStyle(fontFamily: "Poppins", fontSize: 14),
       decoration: InputDecoration(
         border: const UnderlineInputBorder(),
         labelText: label,
-        labelStyle: const TextStyle(
-          fontFamily: "Poppins",
-          fontSize: 14,
-        ),
+        labelStyle: const TextStyle(fontFamily: "Poppins", fontSize: 14),
         suffixIcon: icon != null ? Icon(icon) : null,
       ),
     );

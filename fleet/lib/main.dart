@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 💡 นำเข้า Auth
-import 'package:cloud_firestore/cloud_firestore.dart'; // 💡 นำเข้า Firestore
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'pages/login.dart';
 import 'pages/signup.dart';
@@ -12,20 +12,15 @@ import 'pages/owner/owner_main.dart';
 import 'pages/owner/owner_profile.dart';
 import 'pages/staff/staff_main.dart';
 import 'firebase_options.dart';
-import 'package:flutter/services.dart'; // 💡 นำเข้า services สำหรับจัดการ System UI
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 💡 เอา SystemChrome.setEnabledSystemUIMode ออกจากตรงนี้แล้ว
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MainApp());
 }
 
-// 💡 เปลี่ยน MainApp เป็น StatefulWidget
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
 
@@ -37,8 +32,6 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-    // 💡 ย้ายคำสั่งซ่อน Navigation Bar และ Status Bar มาไว้ที่นี่
-    // เพื่อให้ทำงานหลังจากแอปเริ่มวาดหน้าจอ (แก้ปัญหาโหลด Firebase นานแล้วแถบเด้งกลับ)
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
@@ -47,24 +40,21 @@ class _MainAppState extends State<MainApp> {
     return MaterialApp(
       title: 'Fleet',
       debugShowCheckedModeBanner: false,
-      home: const AuthGate(), 
+      home: const AuthGate(),
       routes: {
-        '/login': (context) => const LoginPage(), 
+        '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
         '/renter': (context) => const RenterMainPage(),
         '/renter/topup': (context) => const RenterTopUpPage(),
-        '/owner': (context) => const OwnerMainPage(), 
-        '/renter_profile' : (context) => const RenterProfilePage(),
-        '/owner_profile' : (context) => const OwnerProfilePage(),
+        '/owner': (context) => const OwnerMainPage(),
+        '/renter_profile': (context) => const RenterProfilePage(),
+        '/owner_profile': (context) => const OwnerProfilePage(),
         '/staff': (context) => const StaffMainPage(),
       },
     );
   }
 }
 
-// ==========================================
-// 💡 ด่านตรวจเช็คสถานะการล็อกอิน (Auth Gate)
-// ==========================================
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -76,12 +66,14 @@ class AuthGate extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.white,
-            body: Center(child: CircularProgressIndicator(color: Color(0xFFAC72A1))),
+            body: Center(
+              child: CircularProgressIndicator(color: Color(0xFFAC72A1)),
+            ),
           );
         }
 
         if (snapshot.hasData && snapshot.data != null) {
-          return const RoleRouter(); 
+          return const RoleRouter();
         }
 
         return const LoginPage();
@@ -90,9 +82,6 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 💡 ฟังก์ชันเช็คสิทธิ์ (Role) แล้วโยนไปหน้า Main ที่ถูกต้อง
-// ==========================================
 class RoleRouter extends StatefulWidget {
   const RoleRouter({super.key});
 
@@ -111,10 +100,13 @@ class _RoleRouterState extends State<RoleRouter> {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        DocumentSnapshot doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
         if (doc.exists) {
-          String role = doc['role'] ?? 'renter'; 
-          
+          String role = doc['role'] ?? 'renter';
+
           if (mounted) {
             if (role == 'owner') {
               Navigator.pushReplacementNamed(context, '/owner');
@@ -147,7 +139,10 @@ class _RoleRouterState extends State<RoleRouter> {
           children: [
             CircularProgressIndicator(color: Color(0xFFAC72A1)),
             SizedBox(height: 16),
-            Text('Setting up your workspace...', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+            Text(
+              'Setting up your workspace...',
+              style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
+            ),
           ],
         ),
       ),

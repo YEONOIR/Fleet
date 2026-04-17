@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../components/owner_nav_bar.dart'; 
+import '../../components/owner_nav_bar.dart';
 import 'owner_profile.dart';
 import 'owner_home.dart';
 import 'owner_notifications.dart';
@@ -21,7 +21,8 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInit) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args.containsKey('initialIndex')) {
         _currentIndex = args['initialIndex'];
       }
@@ -29,7 +30,6 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
     }
   }
 
-  // หน้าจอทั้ง 5 หน้าของ Owner
   final List<Widget> _pages = [
     OwnerHomePage(),
     OwnerVehiclePage(),
