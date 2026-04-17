@@ -1,0 +1,35 @@
+name: iOS Build (Unsigned IPA)
+
+on:
+  workflow_dispatch: # ทำให้เรากดปุ่มสั่งบิลด์เองได้
+
+jobs:
+  build:
+    runs-on: macos-latest # ขอใช้เครื่อง Mac ของ GitHub
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS App (No Code Signing)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package into .ipa
+        run: |
+          mkdir -p Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -qq -r app.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Fleet-iOS-App
+          path: app.ipa
