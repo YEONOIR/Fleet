@@ -1,3 +1,4 @@
+import 'dart:async'; // 💡 เพิ่ม Import เพื่อใช้งาน StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart'; 
@@ -17,7 +18,7 @@ class RenterYourRentPage extends StatefulWidget {
 class _RenterYourRentPageState extends State<RenterYourRentPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true; // 💡 เพิ่มสถานะกำลังโหลด
+  bool _isLoading = true; 
 
   static const List<String> _tabLabels = [
     'Accept',
@@ -45,9 +46,11 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
   
   List<Map<String, dynamic>> _rentData = [];
 
-  // 💡 สร้าง Cache เพื่อเก็บข้อมูลรถและเจ้าของรถที่ดึงมาแล้ว (ช่วยให้โหลดซ้ำไวขึ้น)
   final Map<String, Map<String, dynamic>> _vehicleCache = {};
   final Map<String, Map<String, dynamic>> _userCache = {};
+
+  // 💡 ประกาศตัวแปรสำหรับเก็บ Subscription ของ Real-time listener
+  StreamSubscription<QuerySnapshot>? _rentSubscription;
 
   @override
   void initState() {
@@ -61,27 +64,27 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       if (!_tabController.indexIsChanging) setState(() {});
     });
 
-    _fetchRentHistoryFromFirebase();
+    _listenToRentHistoryFromFirebase(); // 💡 เปลี่ยนมาเรียกฟังก์ชันแบบ Real-time
   }
 
   // ==========================================
-  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (Optimized เร็วขึ้น)
+  // 💡 ฟังก์ชันดึงประวัติการเช่าแบบ Real-time (Auto Refresh)
   // ==========================================
-  Future<void> _fetchRentHistoryFromFirebase() async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        if (mounted) setState(() => _isLoading = false);
-        return;
-      }
+  void _listenToRentHistoryFromFirebase() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
-      QuerySnapshot snap = await FirebaseFirestore.instance
-          .collection('bookings')
-          .where('renter_id', isEqualTo: user.uid)
-          .get();
-
+    // 💡 เปลี่ยนจาก .get() เป็น .snapshots().listen(...)
+    _rentSubscription = FirebaseFirestore.instance
+        .collection('bookings')
+        .where('renter_id', isEqualTo: user.uid)
+        .snapshots()
+        .listen((snap) async {
+          
       if (snap.docs.isNotEmpty) {
-        // 💡 1. รวบรวม ID ของรถและเจ้าของที่ยังไม่มีใน Cache
         Set<String> missingVehicles = {};
         Set<String> missingOwners = {};
 
@@ -94,7 +97,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           if (oId.isNotEmpty && !_userCache.containsKey(oId)) missingOwners.add(oId);
         }
 
-        // 💡 2. ยิง Request ดึงข้อมูลทั้งหมดที่ขาดแบบขนานกัน (Parallel)
         List<Future<void>> fetchTasks = [];
         
         for (String vid in missingVehicles) {
@@ -113,12 +115,10 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           }).catchError((_) {}));
         }
 
-        // รอโหลดข้อมูลที่ขาดให้เสร็จพร้อมกัน
         if (fetchTasks.isNotEmpty) {
           await Future.wait(fetchTasks);
         }
 
-        // 💡 3. นำข้อมูลมาประกอบเข้าด้วยกัน (ไวมากๆ เพราะไม่ต้องรอ await ในลูปแล้ว)
         List<Map<String, dynamic>> realData = [];
         
         for (var doc in snap.docs) {
@@ -132,7 +132,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'reject' || dbStatus == 'rejected') statusCode = 3;
           else statusCode = 4; 
 
-          // ดึงข้อมูลรถจาก Cache
           String vehicleId = data['vehicle_id'] ?? '';
           final vd = _vehicleCache[vehicleId] ?? {};
           String vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
@@ -144,7 +143,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           List<dynamic> vImages = vd['images'] ?? [];
           String vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
 
-          // ดึงข้อมูลเจ้าของรถจาก Cache
           String ownerId = data['owner_id'] ?? '';
           final od = _userCache[ownerId] ?? {};
           String oName = od['first_name'] ?? 'Owner';
@@ -205,23 +203,35 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
            return timeB.compareTo(timeA);
         });
 
-        if (mounted) setState(() => _rentData = realData);
+        if (mounted) setState(() {
+          _rentData = realData;
+          _isLoading = false; // 💡 ปิด Loading เมื่อได้ข้อมูลครบแล้ว
+        });
       } else {
-        if (mounted) setState(() => _rentData = []);
+        if (mounted) setState(() {
+          _rentData = [];
+          _isLoading = false;
+        });
       }
-    } catch (e) {
-      print("Error fetching bookings: $e");
-      if (mounted) setState(() => _rentData = []);
-    } finally {
-      if (mounted) setState(() => _isLoading = false); 
-    }
+    }, onError: (error) {
+      print("Error in real-time listener: $error");
+      if (mounted) setState(() {
+        _rentData = [];
+        _isLoading = false;
+      });
+    });
   }
   
   @override
   void dispose() {
+    _rentSubscription?.cancel(); // 💡 ต้องยกเลิกการฟัง (Listener) เสมอเมื่อปิดหน้านี้เพื่อป้องกัน Memory Leak
     _tabController.dispose();
     super.dispose();
   }
+
+  // ----------------------------------------------------
+  // ส่วน UI ด้านล่างเหมือนเดิมทั้งหมด ไม่ต้องแก้ไข
+  // ----------------------------------------------------
 
   List<Map<String, dynamic>> _itemsForTab(int tabIndex) {
     return _rentData.where((e) => e['status'] == tabIndex).toList();
@@ -273,10 +283,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
           const Expanded(
             child: Text(
               'Your rent',
