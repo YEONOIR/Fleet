@@ -12,27 +12,44 @@ import 'pages/owner/owner_main.dart';
 import 'pages/owner/owner_profile.dart';
 import 'pages/staff/staff_main.dart';
 import 'firebase_options.dart';
+import 'package:flutter/services.dart'; // 💡 นำเข้า services สำหรับจัดการ System UI
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 💡 เอา SystemChrome.setEnabledSystemUIMode ออกจากตรงนี้แล้ว
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(const MainApp());
 }
 
-class MainApp extends StatelessWidget {
+// 💡 เปลี่ยน MainApp เป็น StatefulWidget
+class MainApp extends StatefulWidget {
   const MainApp({super.key});
+
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  @override
+  void initState() {
+    super.initState();
+    // 💡 ย้ายคำสั่งซ่อน Navigation Bar และ Status Bar มาไว้ที่นี่
+    // เพื่อให้ทำงานหลังจากแอปเริ่มวาดหน้าจอ (แก้ปัญหาโหลด Firebase นานแล้วแถบเด้งกลับ)
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fleet',
       debugShowCheckedModeBanner: false,
-      // 💡 เปลี่ยนมาใช้ home แทน initialRoute เพื่อให้หน้าแรกคือ "ด่านตรวจ"
       home: const AuthGate(), 
       routes: {
-        '/login': (context) => const LoginPage(), // 💡 เปลี่ยนชื่อ Route ของหน้า Login นิดหน่อย
+        '/login': (context) => const LoginPage(), 
         '/signup': (context) => const SignUpPage(),
         '/renter': (context) => const RenterMainPage(),
         '/renter/topup': (context) => const RenterTopUpPage(),
@@ -54,10 +71,8 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      // เช็คสถานะแบบ Real-time ว่ามีคนล็อกอินอยู่ไหม
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // ถ้ากำลังโหลดข้อมูล
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.white,
@@ -65,12 +80,10 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        // ถ้ามี User ล็อกอินค้างอยู่ 
         if (snapshot.hasData && snapshot.data != null) {
-          return const RoleRouter(); // 💡 ส่งไปให้ฟังก์ชัน RoleRouter ตรวจสอบสิทธิ์ (Renter/Owner/Staff)
+          return const RoleRouter(); 
         }
 
-        // ถ้าไม่มีใครล็อกอิน ให้ไปที่หน้า Login
         return const LoginPage();
       },
     );
@@ -98,13 +111,11 @@ class _RoleRouterState extends State<RoleRouter> {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // ดึงข้อมูล User จาก Firestore
         DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists) {
-          String role = doc['role'] ?? 'renter'; // ค่าเริ่มต้นคือ renter
+          String role = doc['role'] ?? 'renter'; 
           
           if (mounted) {
-            // โยนไปหน้าต่างๆ ตาม Role ที่เจอ
             if (role == 'owner') {
               Navigator.pushReplacementNamed(context, '/owner');
             } else if (role == 'staff') {
@@ -114,7 +125,6 @@ class _RoleRouterState extends State<RoleRouter> {
             }
           }
         } else {
-          // ถ้าไม่มีข้อมูลใน Firestore (อาจจะโดนลบ) ให้เตะออกจากระบบ
           await FirebaseAuth.instance.signOut();
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/login');
@@ -129,7 +139,6 @@ class _RoleRouterState extends State<RoleRouter> {
 
   @override
   Widget build(BuildContext context) {
-    // หน้าจอโหลดชั่วคราวระหว่างรอเช็ค Role 
     return const Scaffold(
       backgroundColor: Colors.white,
       body: Center(
