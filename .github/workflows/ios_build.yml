@@ -1,15 +1,19 @@
 name: iOS Build (Unsigned IPA)
 
 on:
-  workflow_dispatch: # ทำให้เรากดปุ่มสั่งบิลด์เองได้
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest # ขอใช้เครื่อง Mac ของ GitHub
+    runs-on: macos-latest
+    defaults:
+      run:
+        # 💡 สั่งให้ทุกขั้นตอนเข้าไปทำในโฟลเดอร์ fleet โดยอัตโนมัติ
+        working-directory: ./fleet 
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # 💡 อัปเดตเป็น v4 แล้ว
+        uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -17,11 +21,9 @@ jobs:
           channel: 'stable'
 
       - name: Install Dependencies
-        working-directory: ./FleetApp # 💡 เปลี่ยนเป็นชื่อโฟลเดอร์ที่เก็บโปรเจกต์จริงๆ
         run: flutter pub get
 
       - name: Build iOS App (No Code Signing)
-        working-directory: ./FleetApp # 💡 ใส่ตรงนี้ด้วย
         run: flutter build ios --release --no-codesign
 
       - name: Package into .ipa
@@ -31,7 +33,8 @@ jobs:
           zip -qq -r app.ipa Payload
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4 # 💡 อัปเดตเป็น v4 แล้ว
+        uses: actions/upload-artifact@v4
         with:
           name: Fleet-iOS-App
-          path: app.ipa
+          # 💡 ตอนดึงไฟล์ออกมา ต้องระบุด้วยว่าไฟล์อยู่ในโฟลเดอร์ fleet
+          path: fleet/app.ipa
