@@ -68,7 +68,7 @@
 
 2.  **ติดตั้ง Packages ทั้งหมดที่จำเป็น**
     ```bash
-   flutter pub get
+    flutter pub get
 
 3. **รันแอปพลิเคชัน**
     เปิด Emulator (เช่น Android Emulator หรือ iOS Simulator)
