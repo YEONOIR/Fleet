@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -18,7 +17,7 @@ class RenterYourRentPage extends StatefulWidget {
 class _RenterYourRentPageState extends State<RenterYourRentPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
+  bool _isLoading = true; // 💡 เพิ่มสถานะกำลังโหลด
 
   static const List<String> _tabLabels = [
     'Accept',
@@ -46,10 +45,9 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
 
   List<Map<String, dynamic>> _rentData = [];
 
+  // 💡 สร้าง Cache เพื่อเก็บข้อมูลรถและเจ้าของรถที่ดึงมาแล้ว (ช่วยให้โหลดซ้ำไวขึ้น)
   final Map<String, Map<String, dynamic>> _vehicleCache = {};
   final Map<String, Map<String, dynamic>> _userCache = {};
-
-  StreamSubscription<QuerySnapshot>? _rentSubscription;
 
   @override
   void initState() {
@@ -63,25 +61,29 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       if (!_tabController.indexIsChanging) setState(() {});
     });
 
-    _listenToRentHistoryFromFirebase();
+    _fetchRentHistoryFromFirebase();
   }
 
-  void _listenToRentHistoryFromFirebase() {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) setState(() => _isLoading = false);
-      return;
-    }
+  // ==========================================
+  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (Optimized เร็วขึ้น)
+  // ==========================================
+  Future<void> _fetchRentHistoryFromFirebase() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
 
-    _rentSubscription = FirebaseFirestore.instance
-        .collection('bookings')
-        .where('renter_id', isEqualTo: user.uid)
-        .snapshots()
-        .listen(
-          (snap) async {
-            if (snap.docs.isNotEmpty) {
-              Set<String> missingVehicles = {};
-              Set<String> missingOwners = {};
+      QuerySnapshot snap = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('renter_id', isEqualTo: user.uid)
+          .get();
+
+      if (snap.docs.isNotEmpty) {
+        // 💡 1. รวบรวม ID ของรถและเจ้าของที่ยังไม่มีใน Cache
+        Set<String> missingVehicles = {};
+        Set<String> missingOwners = {};
 
               for (var doc in snap.docs) {
                 var data = doc.data() as Map<String, dynamic>;
@@ -94,23 +96,16 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
                   missingOwners.add(oId);
               }
 
-              List<Future<void>> fetchTasks = [];
-
-              for (String vid in missingVehicles) {
-                fetchTasks.add(
-                  FirebaseFirestore.instance
-                      .collection('vehicles')
-                      .doc(vid)
-                      .get()
-                      .then((doc) {
-                        if (doc.exists && doc.data() != null) {
-                          _vehicleCache[vid] =
-                              doc.data() as Map<String, dynamic>;
-                        }
-                      })
-                      .catchError((_) {}),
-                );
-              }
+        // 💡 2. ยิง Request ดึงข้อมูลทั้งหมดที่ขาดแบบขนานกัน (Parallel)
+        List<Future<void>> fetchTasks = [];
+        
+        for (String vid in missingVehicles) {
+          fetchTasks.add(FirebaseFirestore.instance.collection('vehicles').doc(vid).get().then((doc) {
+            if (doc.exists && doc.data() != null) {
+              _vehicleCache[vid] = doc.data() as Map<String, dynamic>;
+            }
+          }).catchError((_) {}));
+        }
 
               for (String oid in missingOwners) {
                 fetchTasks.add(
@@ -127,50 +122,42 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
                 );
               }
 
-              if (fetchTasks.isNotEmpty) {
-                await Future.wait(fetchTasks);
-              }
+        // รอโหลดข้อมูลที่ขาดให้เสร็จพร้อมกัน
+        if (fetchTasks.isNotEmpty) {
+          await Future.wait(fetchTasks);
+        }
 
-              List<Map<String, dynamic>> realData = [];
+        // 💡 3. นำข้อมูลมาประกอบเข้าด้วยกัน (ไวมากๆ เพราะไม่ต้องรอ await ในลูปแล้ว)
+        List<Map<String, dynamic>> realData = [];
+        
+        for (var doc in snap.docs) {
+          var data = doc.data() as Map<String, dynamic>;
+          
+          int statusCode = 4; 
+          String dbStatus = data['status']?.toString().toLowerCase() ?? 'pending';
+          if (dbStatus == 'accept' || dbStatus == 'accepted') statusCode = 0;
+          else if (dbStatus == 'using') statusCode = 1;
+          else if (dbStatus == 'complete' || dbStatus == 'completed') statusCode = 2;
+          else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'reject' || dbStatus == 'rejected') statusCode = 3;
+          else statusCode = 4; 
 
-              for (var doc in snap.docs) {
-                var data = doc.data() as Map<String, dynamic>;
+          // ดึงข้อมูลรถจาก Cache
+          String vehicleId = data['vehicle_id'] ?? '';
+          final vd = _vehicleCache[vehicleId] ?? {};
+          String vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
+          String vPlate = vd['license_plate'] ?? '-';
+          String vModel = vd['model'] ?? '-';
+          String vType = vd['vehicle_type'] ?? 'Car';
+          String vAddress = vd['address'] ?? 'No address';
+          String vFuel = vd['fuel'] ?? '-';
+          List<dynamic> vImages = vd['images'] ?? [];
+          String vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
 
-                int statusCode = 4;
-                String dbStatus =
-                    data['status']?.toString().toLowerCase() ?? 'pending';
-                if (dbStatus == 'accept' || dbStatus == 'accepted')
-                  statusCode = 0;
-                else if (dbStatus == 'using')
-                  statusCode = 1;
-                else if (dbStatus == 'complete' || dbStatus == 'completed')
-                  statusCode = 2;
-                else if (dbStatus == 'cancel' ||
-                    dbStatus == 'cancelled' ||
-                    dbStatus == 'reject' ||
-                    dbStatus == 'rejected')
-                  statusCode = 3;
-                else
-                  statusCode = 4;
-
-                String vehicleId = data['vehicle_id'] ?? '';
-                final vd = _vehicleCache[vehicleId] ?? {};
-                String vName =
-                    vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
-                String vPlate = vd['license_plate'] ?? '-';
-                String vModel = vd['model'] ?? '-';
-                String vType = vd['vehicle_type'] ?? 'Car';
-                String vAddress = vd['address'] ?? 'No address';
-                String vFuel = vd['fuel'] ?? '-';
-                List<dynamic> vImages = vd['images'] ?? [];
-                String vImage = vImages.isNotEmpty
-                    ? vImages[0]
-                    : 'assets/images/car.jpg';
-
-                String ownerId = data['owner_id'] ?? '';
-                final od = _userCache[ownerId] ?? {};
-                String oName = od['first_name'] ?? 'Owner';
-                String oPhone = od['phone'] ?? '-';
+          // ดึงข้อมูลเจ้าของรถจาก Cache
+          String ownerId = data['owner_id'] ?? '';
+          final od = _userCache[ownerId] ?? {};
+          String oName = od['first_name'] ?? 'Owner';
+          String oPhone = od['phone'] ?? '-';
 
                 String formatDate(Timestamp? ts) {
                   if (ts == null) return 'N/A';
@@ -227,33 +214,20 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
                 return timeB.compareTo(timeA);
               });
 
-              if (mounted)
-                setState(() {
-                  _rentData = realData;
-                  _isLoading = false;
-                });
-            } else {
-              if (mounted)
-                setState(() {
-                  _rentData = [];
-                  _isLoading = false;
-                });
-            }
-          },
-          onError: (error) {
-            print("Error in real-time listener: $error");
-            if (mounted)
-              setState(() {
-                _rentData = [];
-                _isLoading = false;
-              });
-          },
-        );
+        if (mounted) setState(() => _rentData = realData);
+      } else {
+        if (mounted) setState(() => _rentData = []);
+      }
+    } catch (e) {
+      print("Error fetching bookings: $e");
+      if (mounted) setState(() => _rentData = []);
+    } finally {
+      if (mounted) setState(() => _isLoading = false); 
+    }
   }
 
   @override
   void dispose() {
-    _rentSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -307,6 +281,10 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
       ),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
           const Expanded(
             child: Text(
               'Your rent',
