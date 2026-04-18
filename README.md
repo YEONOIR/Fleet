@@ -1,84 +1,133 @@
-# Fleet - Vehicle Rental System 🚗
+# 🚗 Fleet - Vehicle Rental System
 
-โปรเจกต์นี้เป็นส่วนหนึ่งของรายวิชา **ITDS283 Mobile Application Development**  
-แอปพลิเคชัน Fleet ถูกพัฒนาขึ้นด้วย **Flutter** เพื่อใช้สำหรับเป็นระบบจัดการการเช่ายานพาหนะที่ครอบคลุม  
-โดยมีการแบ่งสิทธิ์การใช้งานออกเป็น 2 ส่วนหลัก ได้แก่ ผู้ใช้งานทั่วไป (User) ซึ่งแบ่งได้อีก 2 ประเภทคือ ผู้เช่า (Renter) กับ ผู้ให้เช่า (Owner) และ พนักงาน (Staff)  
-และใช้ Firebase เป็น Backend ในการจัดการข้อมูล
+โปรเจกต์นี้เป็นส่วนหนึ่งของรายวิชา **ITDS283 Mobile Application Development**
+แอปพลิเคชัน **Fleet** ถูกพัฒนาขึ้นด้วย **Flutter** เพื่อใช้เป็นระบบจัดการการเช่ายานพาหนะแบบครบวงจร
 
----
+ระบบมีการแบ่งสิทธิ์การใช้งานออกเป็น 3 กลุ่มหลัก:
 
-## 🌟 ฟีเจอร์หลัก
+* 👤 **User**
 
-- **Role-Based Access:**  
-  ระบบล็อกอินและการแสดงผล UI ที่แยกกันชัดเจนระหว่าง ผู้ใช้งานทั่วไป (User) และพนักงาน (Staff)
+  * ผู้เช่า (Renter)
+  * ผู้ให้เช่า (Owner)
+* 🧑‍💼 **Staff**
 
-- **Booking System:**  
-  ระบบสำหรับการจองยานพาหนะ
-
-- **Notifications:**  
-  ระบบการแจ้งเตือนสถานะต่างcๆ ภายในแอปพลิเคชัน
-
-- **Firebase Integration:**  
-  การเชื่อมต่อฐานข้อมูลแบบเรียลไทม์ผ่าน Firebase
+โดยใช้ **Firebase** เป็น Backend สำหรับจัดการข้อมูลแบบเรียลไทม์
 
 ---
 
-## 🔑 บัญชีสำหรับการทดสอบ (Test Accounts)
+## 🌟 Features
 
-ในการทดสอบการทำงานของแอปพลิเคชัน สามารถเข้าสู่ระบบได้ตามสิทธิ์การใช้งานดังนี้:
+### 🔐 Role-Based Access
 
-### 👤 ผู้ใช้ทั่วไป / ผู้เช่า (Renter)
-สามารถลงทะเบียนสร้างบัญชีใหม่ได้ด้วยตัวเองผ่านหน้า **Sign Up** ในแอปพลิเคชัน
+ระบบล็อกอินและการแสดงผล UI ที่แตกต่างกันตามประเภทผู้ใช้งาน
+(User / Staff)
 
-### 🧑‍💼 พนักงาน (Staff)
-สำหรับการทดสอบระบบในส่วนจัดการของพนักงาน กรุณาใช้บัญชีที่เตรียมไว้ให้ดังนี้:
+### 📅 Booking System
 
-- **Email:** `admin@gmail.com`  
-- **Password:** `staffside`
+ระบบสำหรับจองยานพาหนะ พร้อมจัดการสถานะการเช่า
 
----
+### 🔔 Notifications
 
-## 🛠 เทคโนโลยีที่ใช้ (Tech Stack)
+ระบบแจ้งเตือนสถานะต่าง ๆ ภายในแอปพลิเคชัน
 
-- **Frontend:** Flutter & Dart  
-- **Backend:** Firebase (Authentication, Firestore) & Imgbb (สำหรับเก็บรูป) 
+### ☁️ Firebase Integration
 
----
-
-## 🚀 วิธีการติดตั้งและการรันโปรเจกต์ (Getting Started)
-
-### 📌 สิ่งที่ต้องมีเบื้องต้น (Prerequisites)
-
-ก่อนที่จะเริ่มรันโปรเจกต์ กรุณาตรวจสอบให้แน่ใจว่าได้ติดตั้งเครื่องมือเหล่านี้แล้ว:
-
-- [Flutter SDK](https://docs.flutter.dev/get-started/install)
-- [Dart SDK](https://dart.dev/get-dart)
-- IDE เช่น:
-  - [VS Code](https://code.visualstudio.com/)
-  - [Android Studio](https://developer.android.com/studio)
+เชื่อมต่อฐานข้อมูลแบบเรียลไทม์ผ่าน Firebase
 
 ---
 
-### ▶️ ขั้นตอนการรันแอปพลิเคชัน
+## 🔑 Test Accounts
 
-1. **Clone repository นี้ลงเครื่องของคุณ**
-   ```bash
-   git clone [ใส่_URL_ของ_GitHub_Repository_ที่นี่]
-   cd fleet
+### 👤 ผู้ใช้ทั่วไป (Renter)
 
-2.  **ติดตั้ง Packages ทั้งหมดที่จำเป็น**
-    ```bash
-    flutter pub get
+สามารถสมัครบัญชีใหม่ได้ผ่านหน้า **Sign Up** ในแอป
 
-3. **รันแอปพลิเคชัน**
-    เปิด Emulator (เช่น Android Emulator หรือ iOS Simulator)
-    จากนั้นใช้คำสั่ง
-    ```bash
-    flutter run
+### 🧑‍💼 Staff
 
-## Developed by
-1. Pimthida Butsra
-    ID: 6787062
+ใช้สำหรับทดสอบระบบฝั่งพนักงาน
 
-2. Sukrit Chatchawal
-    ID: 6787083
+* **Email:** `admin@gmail.com`
+* **Password:** `staffside`
+
+---
+
+## 🛠 Tech Stack
+
+* **Frontend:** Flutter, Dart
+* **Backend:** Firebase (Authentication, Firestore)
+* **Image Storage:** ImgBB
+
+---
+
+## 🚀 Getting Started
+
+### 📌 Prerequisites
+
+ก่อนเริ่มใช้งาน กรุณาติดตั้งเครื่องมือดังนี้:
+
+* Flutter SDK
+* Dart SDK
+* IDE:
+
+  * VS Code
+  * Android Studio
+
+---
+
+## ▶️ Run Application
+
+สามารถรันแอปได้ 2 วิธี:
+
+### 📱 วิธีที่ 1: ติดตั้งผ่าน APK
+
+1. ไปที่โฟลเดอร์:
+
+   ```
+   /fleet/build/app/outputs/flutter-apk
+   ```
+2. ดาวน์โหลดไฟล์:
+
+   ```
+   app-release.apk
+   ```
+3. ติดตั้งลงบนอุปกรณ์ Android
+
+---
+
+### 💻 วิธีที่ 2: รันผ่าน Emulator / Device
+
+#### 1. Clone Repository
+
+```bash
+git clone [YOUR_GITHUB_REPOSITORY_URL]
+cd fleet
+```
+
+#### 2. ติดตั้ง Dependencies
+
+```bash
+flutter pub get
+```
+
+#### 3. รันแอป
+
+```bash
+flutter run
+```
+
+---
+
+## 👨‍💻 Developed By
+
+* **Pimthida Butsra**
+  ID: 6787062
+
+* **Sukrit Chatchawal**
+  ID: 6787083
+
+---
+
+## ✨ Notes
+
+* โปรเจกต์นี้ถูกพัฒนาเพื่อการศึกษา
+* สามารถนำไปต่อยอดหรือปรับปรุงเพิ่มเติมได้ตามต้องการ
