@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'renter_your_rent.dart';
 import '../review_page.dart';
 import '../take_photo.dart';
 import '../rating.dart';

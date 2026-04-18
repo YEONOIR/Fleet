@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../components/search_calendar.dart';
-import '../../components/time_selector.dart';
 import '../../utils/vehicle_utils.dart';
-import 'rent_payment.dart';
 import '../review_page.dart';
 import '../../components/rent_booking_modal.dart';
 

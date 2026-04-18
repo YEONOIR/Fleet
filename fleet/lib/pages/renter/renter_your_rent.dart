@@ -17,7 +17,7 @@ class RenterYourRentPage extends StatefulWidget {
 class _RenterYourRentPageState extends State<RenterYourRentPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true; // 💡 เพิ่มสถานะกำลังโหลด
+  bool _isLoading = true;
 
   static const List<String> _tabLabels = [
     'Accept',
@@ -45,7 +45,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
 
   List<Map<String, dynamic>> _rentData = [];
 
-  // 💡 สร้าง Cache เพื่อเก็บข้อมูลรถและเจ้าของรถที่ดึงมาแล้ว (ช่วยให้โหลดซ้ำไวขึ้น)
   final Map<String, Map<String, dynamic>> _vehicleCache = {};
   final Map<String, Map<String, dynamic>> _userCache = {};
 
@@ -64,9 +63,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
     _fetchRentHistoryFromFirebase();
   }
 
-  // ==========================================
-  // 💡 ฟังก์ชันดึงประวัติการเช่าจาก Firebase (Optimized เร็วขึ้น)
-  // ==========================================
   Future<void> _fetchRentHistoryFromFirebase() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
@@ -81,7 +77,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           .get();
 
       if (snap.docs.isNotEmpty) {
-        // 💡 1. รวบรวม ID ของรถและเจ้าของที่ยังไม่มีใน Cache
         Set<String> missingVehicles = {};
         Set<String> missingOwners = {};
 
@@ -96,7 +91,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
                   missingOwners.add(oId);
               }
 
-        // 💡 2. ยิง Request ดึงข้อมูลทั้งหมดที่ขาดแบบขนานกัน (Parallel)
         List<Future<void>> fetchTasks = [];
         
         for (String vid in missingVehicles) {
@@ -122,12 +116,10 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
                 );
               }
 
-        // รอโหลดข้อมูลที่ขาดให้เสร็จพร้อมกัน
         if (fetchTasks.isNotEmpty) {
           await Future.wait(fetchTasks);
         }
 
-        // 💡 3. นำข้อมูลมาประกอบเข้าด้วยกัน (ไวมากๆ เพราะไม่ต้องรอ await ในลูปแล้ว)
         List<Map<String, dynamic>> realData = [];
         
         for (var doc in snap.docs) {
@@ -141,7 +133,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           else if (dbStatus == 'cancel' || dbStatus == 'cancelled' || dbStatus == 'reject' || dbStatus == 'rejected') statusCode = 3;
           else statusCode = 4; 
 
-          // ดึงข้อมูลรถจาก Cache
           String vehicleId = data['vehicle_id'] ?? '';
           final vd = _vehicleCache[vehicleId] ?? {};
           String vName = vd['vehicle_name'] ?? vd['brand'] ?? 'Unknown Vehicle';
@@ -153,7 +144,6 @@ class _RenterYourRentPageState extends State<RenterYourRentPage>
           List<dynamic> vImages = vd['images'] ?? [];
           String vImage = vImages.isNotEmpty ? vImages[0] : 'assets/images/car.jpg';
 
-          // ดึงข้อมูลเจ้าของรถจาก Cache
           String ownerId = data['owner_id'] ?? '';
           final od = _userCache[ownerId] ?? {};
           String oName = od['first_name'] ?? 'Owner';
